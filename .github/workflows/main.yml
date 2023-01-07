@@ -7,12 +7,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      ARCHIVE_NAME: Vapourmist_${{env.GITHUB_REF_NAME}}
+      ARCHIVE_NAME: Vapourmist
     steps:
-    
-      - name: Validate archive name
-        run: echo "$ARCHIVE_NAME"
-    
+
       - name: Checkout Code
         uses: actions/checkout@v2
         with:
@@ -36,4 +33,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          files: ${{env.ARCHIVE_NAME}}.7z
+          files: ${{env.ARCHIVE_NAME}}_${{env.GITHUB_REF_NAME}}.7z
