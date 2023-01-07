@@ -97,7 +97,6 @@ local function isPlayerClouded(cloudMesh)
 	local mp = tes3.mobilePlayer
 	local playerPos = mp.position:copy()
 	local drawDistance = mge.distantLandRenderConfig.drawDistance
-	debug.log(tostring(playerPos:distance(cloudMesh.translation:copy()) .. " " .. (getCutoffDistance(drawDistance))))
 	return playerPos:distance(cloudMesh.translation:copy()) < (getCutoffDistance(drawDistance))
 end
 
