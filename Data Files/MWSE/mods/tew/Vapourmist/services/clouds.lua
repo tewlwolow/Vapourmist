@@ -15,7 +15,7 @@ local TIMER_DURATION = 0.1
 local CELL_SIZE = 8192
 
 local MIN_LIFESPAN = 12
-local MAX_LIFESPAN = 25
+local MAX_LIFESPAN = 23
 
 local MIN_DEPTH = 500
 local MAX_DEPTH = 3400
