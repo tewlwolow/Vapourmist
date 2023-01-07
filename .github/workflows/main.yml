@@ -9,10 +9,6 @@ jobs:
     env:
       ARCHIVE_NAME: Vapourmist
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 50
 
       - name: Build Project
         uses: edgarrc/action-7z@v1
