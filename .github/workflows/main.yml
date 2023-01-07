@@ -7,7 +7,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      ARCHIVE_NAME: Vapourmist
+      ARCHIVE_NAME: Vapourmist_${{  github.ref_name }}
     steps:
 
       - name: Checkout Code
@@ -33,4 +33,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          files: ${{env.ARCHIVE_NAME}}_${{  github.ref_name }}.7z
+          files: ${{env.ARCHIVE_NAME}}.7z
