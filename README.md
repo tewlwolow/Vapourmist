@@ -8,7 +8,7 @@
   <h3 align="center">Vapourmist</h3>
 
   <p align="center">
-    The source code for Morrowind MWSE-Lua based mod that adds nif-based clouds and mist.
+    The source code for Morrowind MWSE-Lua based mod that adds nif and shader-based clouds and mist.
     <br />
     <a href="https://www.nexusmods.com/morrowind/mods/50517"><strong>» Download the latest version from NexusMods</strong></a>
     <br />
