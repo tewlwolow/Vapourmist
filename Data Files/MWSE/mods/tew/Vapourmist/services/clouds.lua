@@ -202,7 +202,7 @@ end
 -- Colour logic
 
 local function getCloudColourMix(fogComp, skyComp)
-	return math.lerp(fogComp, skyComp, 0.2)
+	return math.lerp(fogComp, skyComp, 0.05)
 end
 
 local function getBleachedColour(comp)
