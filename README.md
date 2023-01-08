@@ -11,18 +11,18 @@
 The source code and assets repository for a Morrowind MWSE-Lua based mod that adds NIF and shader-based clouds and mist.
 
 <!-- Links -->
-## Links :link:
+## :link: Links
 
 - [NexusMods](https://www.nexusmods.com/morrowind/mods/50517)
 
 <!-- Contributing -->
-## Contributing :jigsaw:
+## :jigsaw: Contributing
 
 Please raise a pull request from your fork of the repo for me to review. Kindly use 4-spaced tabs.
 Refer to NexusMods page or source code comments for guidance. You can also write me a message.
 
 <!-- Contributing -->
-## Archives :briefcase:
+## :briefcase: Archives
 
 You can find the previous mod iterations here:
 -  [tew](https://github.com/tewlwolow/tew)
