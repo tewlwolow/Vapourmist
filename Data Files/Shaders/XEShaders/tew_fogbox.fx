@@ -135,7 +135,7 @@ float4 draw(float2 tex : TEXCOORD, float2 vpos : VPOS) : COLOR0 {
 
     // dithering!
     float dithering = DITHERING[vpos.x % 4][vpos.y % 4];
-    color += dithering;
+    color += dithering/1.5;
 
     return float4(color, 1.0);
 }
