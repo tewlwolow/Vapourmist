@@ -26,7 +26,7 @@ local function getCloudColourMix(fogComp, skyComp)
 end
 
 local function getDarkerColour(comp)
-	return math.clamp(math.lerp(comp, 0.0, 0.15), 0.03, 0.88)
+	return math.clamp(math.lerp(comp, 0.0, 0.1), 0.03, 0.9)
 end
 
 -- Calculate output colours from current fog colour --
