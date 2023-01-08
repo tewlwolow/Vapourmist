@@ -7,7 +7,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      ARCHIVE_NAME: Vapourmist_${{  github.ref_name }}
+      ARCHIVE_NAME: Vapourmist_${{github.ref_name}}
     steps:
 
       - name: Checkout Code
@@ -26,11 +26,11 @@ jobs:
           header: '### Changelog'
           include-hash: true
           include-range: true
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{secrets.GITHUB_TOKEN}}
 
       - name: Upload to Github
         uses: softprops/action-gh-release@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
         with:
           files: ${{env.ARCHIVE_NAME}}.7z
