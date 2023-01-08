@@ -15,7 +15,7 @@ jobs:
         with:
           fetch-depth: 50
 
-      - name: Build Project
+      - name: Build Archive
         uses: edgarrc/action-7z@v1
         with:
           args: 7z a  ${{env.ARCHIVE_NAME}}.7z "Data Files"
