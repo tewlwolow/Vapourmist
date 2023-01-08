@@ -85,7 +85,7 @@ float boxDensity(float3 wpos, float3 wdir, float3 p, float3 r, float dbuffer) {
             + (t6/6.0) * (b.x*c.y*c.z + c.x*b.y*c.z + c.x*c.y*b.z)
             + (t7/7.0) * (c.x*c.y*c.z);
 
-    return f - (f * 0.4 * sin(time/11));
+    return f - (f * 0.41 * sin(time/11));
 }
 
 // -------------------------------------------------------------- //
@@ -112,10 +112,10 @@ float4 draw(float2 tex : TEXCOORD, float2 vpos : VPOS) : COLOR0 {
     for (int i = 0; i < NUM_FOG_VOLUMES; i++) {
 
         float3 center = float3(fogCenters[i]);
-        center.z -= (((i + 2) * 300) - 300) * cos(time/12);
+        center.z -= (((i + 2) * 300) - 300) * cos(time/16);
 
         float3 radius = float3(fogRadi[i]);
-        radius.z += ((i + 2) * 100 - 50) * sin(time/15);
+        radius.z += ((i + 2) * 100 - 50) * sin(time/20);
 
         float density = boxDensity(pos, dir, center, radius, depth);
         if (density > 0.0) {
