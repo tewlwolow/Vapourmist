@@ -11,7 +11,7 @@ jobs:
     steps:
 
       - name: Checkout Code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: 50
 
@@ -21,7 +21,7 @@ jobs:
           args: 7z a  ${{env.ARCHIVE_NAME}}.7z "Data Files"
 
       - name: Create Release
-        uses: notlmn/release-with-changelog@v2
+        uses: notlmn/release-with-changelog@v3
         with:
           header: '### Changelog'
           include-hash: true
