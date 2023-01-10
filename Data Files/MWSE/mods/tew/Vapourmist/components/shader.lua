@@ -3,6 +3,8 @@ local this = {}
 ---@type mgeShaderHandle|nil
 local shader
 
+local SHADER_NAME = "tew_fogbox"
+
 local NUM_FOG_VOLUMES = 3
 
 local fogVolumes = {
@@ -81,7 +83,7 @@ end
 
 
 local function applyShaderParams()
-    shader = mge.shaders.load({ name = "tew_fogbox" })
+    shader = mge.shaders.load({ name = SHADER_NAME })
     if shader then
         shader.fogColors = fogVolumes.fogColors
         shader.fogCenters = fogVolumes.fogCenters
