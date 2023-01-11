@@ -19,7 +19,9 @@ local services = {
 	mist = {
 		init = function()
 			local mist = require("tew.Vapourmist.services.mist")
-			event.register(tes3.event.cellChanged, mist.onCellChanged)
+			event.register(tes3.event.loaded, mist.onLoaded)
+			event.register(tes3.event.cellChanged, mist.conditionCheck)
+			event.register(tes3.event.weatherTransitionStarted, mist.onWeatherChanged)
 		end
 	},
 	interior = {
