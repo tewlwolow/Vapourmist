@@ -21,7 +21,7 @@ local MIN_DEPTH = 500
 local MAX_DEPTH = 3400
 
 local MIN_BIRTHRATE = 1.8
-local MAX_BIRTHRATE = 3.0
+local MAX_BIRTHRATE = 2.4
 
 local MIN_SPEED = 15
 
