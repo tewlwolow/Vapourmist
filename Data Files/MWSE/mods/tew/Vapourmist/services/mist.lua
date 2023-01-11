@@ -175,8 +175,12 @@ function mist.conditionCheck()
             debugLog("Mist available.")
             updateMist()
             FOG_TIMER:resume()
-            FADE_OUT_TIMER:cancel()
-            FADE_OUT_REMOVE_TIMER:cancel()
+            if FADE_OUT_TIMER.state ~= timer.expired then
+                FADE_OUT_TIMER:cancel()
+            end
+            if FADE_OUT_REMOVE_TIMER.state ~= timer.expired then
+                FADE_OUT_REMOVE_TIMER:cancel()
+            end
             FADE_IN_TIMER = timer.start{
                 duration = FADE_DURATION,
                 callback = fadeIn,
@@ -188,7 +192,9 @@ function mist.conditionCheck()
         end
     else
         debugLog("Mist not available.")
-        FADE_IN_TIMER:cancel()
+        if FADE_IN_TIMER.state ~= timer.expired then
+            FADE_IN_TIMER:cancel()
+        end
         FADE_OUT_TIMER = timer.start{
             duration = FADE_DURATION,
             callback = fadeOut,
