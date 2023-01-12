@@ -11,7 +11,7 @@ local mistDensity = 0
 local WtC = tes3.worldController.weatherController
 local WorldC = tes3.worldController
 
-local TIMER_DURATION = 0.1
+local TIMER_DURATION = 0.3
 local FADE_DURATION = 0.05
 
 local mistDeployed = false
@@ -83,13 +83,12 @@ end
 
 local function fadeIn()
     if mistDensity >= MAX_DENSITY then return end
-    mistDensity = mistDensity + MAX_DENSITY/STEPS
-    debug.log(tostring(mistDensity))
+    mistDensity = mistDensity + (MAX_DENSITY/STEPS)
 end
 
 local function fadeOut()
     if mistDensity <= 0 then return end
-    mistDensity = mistDensity - MAX_DENSITY/STEPS
+    mistDensity = mistDensity - (MAX_DENSITY/STEPS)
 end
 
 local function updateMist()
@@ -160,6 +159,12 @@ function mist.onWeatherChanged(e)
 	end
 end
 
+local function stopTimer(timerVal)
+    if timerVal and timerVal.state ~= timer.expired then
+        timerVal:cancel()
+    end
+end
+
 function mist.conditionCheck()
     local cell = tes3.getPlayerCell()
     if not cell.isOrBehavesAsExterior then
@@ -175,12 +180,8 @@ function mist.conditionCheck()
             debugLog("Mist available.")
             updateMist()
             FOG_TIMER:resume()
-            if FADE_OUT_TIMER.state ~= timer.expired then
-                FADE_OUT_TIMER:cancel()
-            end
-            if FADE_OUT_REMOVE_TIMER.state ~= timer.expired then
-                FADE_OUT_REMOVE_TIMER:cancel()
-            end
+            stopTimer(FADE_OUT_TIMER)
+            stopTimer(FADE_OUT_REMOVE_TIMER)
             FADE_IN_TIMER = timer.start{
                 duration = FADE_DURATION,
                 callback = fadeIn,
@@ -192,9 +193,7 @@ function mist.conditionCheck()
         end
     else
         debugLog("Mist not available.")
-        if FADE_IN_TIMER.state ~= timer.expired then
-            FADE_IN_TIMER:cancel()
-        end
+        stopTimer(FADE_IN_TIMER)
         FADE_OUT_TIMER = timer.start{
             duration = FADE_DURATION,
             callback = fadeOut,

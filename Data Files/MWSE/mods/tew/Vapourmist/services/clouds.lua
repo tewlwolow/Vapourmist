@@ -10,7 +10,7 @@ local config = require("tew.Vapourmist.config")
 -->>>---------------------------------------------------------------------------------------------<<<--
 -- Constants
 
-local TIMER_DURATION = 0.1
+local TIMER_DURATION = 0.3
 
 local CELL_SIZE = 8192
 
@@ -27,7 +27,7 @@ local MIN_SPEED = 15
 
 local CUTOFF_COEFF = 4
 
-local HEIGHTS = {5760, 5900, 6000, 6100, 6200, 6800}
+local HEIGHTS = {4800, 5200, 5760, 5900, 6000, 6100, 6200, 6800}
 local SIZES = {1340, 1500, 1620, 1740, 1917, 2100, 2450, 2500, 2600}
 
 local MESH = tes3.loadMesh("tew\\Vapourmist\\vapourcloud.nif")
@@ -80,7 +80,7 @@ local function isAvailable(weather)
 end
 
 local function getParticleSystemSize(drawDistance)
-	local distantFog = mge.weather.getDistantFog(WtC.currentWeather.index)
+	local distantFog = mge.weather.getDistantFog(toWeather.index)
 	local fogDistance = 1
 	if distantFog then
 		fogDistance = distantFog.distance
