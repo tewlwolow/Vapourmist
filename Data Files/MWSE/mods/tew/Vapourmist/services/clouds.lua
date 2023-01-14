@@ -149,6 +149,7 @@ local function detach(vfxRoot, node)
 	vfxRoot:detachChild(node)
 	debugLog("Cloud detached.")
 	removeFromRemoveQueue(node)
+	removeFromTracker(node)
 end
 
 function clouds.detachAll()
@@ -366,6 +367,7 @@ local function waitingCheck()
 			clouds.detachAll()
 		end
 	end
+	clouds.conditionCheck()
 end
 
 function clouds.onWaitMenu(e)
@@ -448,6 +450,7 @@ function clouds.onLoaded()
 	startTimer()
 	tracker, removeQueue = {}, {}
 	clouds.detachAll()
+	clouds.conditionCheck()
 end
 
 return clouds
