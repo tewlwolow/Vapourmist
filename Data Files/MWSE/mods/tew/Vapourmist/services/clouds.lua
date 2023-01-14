@@ -80,12 +80,7 @@ local function isAvailable(weather)
 end
 
 local function getParticleSystemSize(drawDistance)
-	local distantFog = mge.weather.getDistantFog(toWeather.index)
-	local fogDistance = 1
-	if distantFog then
-		fogDistance = distantFog.distance
-	end
-	return (CELL_SIZE * drawDistance * fogDistance)
+	return (CELL_SIZE * drawDistance)
 end
 
 local function getCutoffDistance(drawDistance)
@@ -231,6 +226,8 @@ local function getOutputValues()
 end
 
 local function reColourTable(tab, cloudColour, speed, angle)
+	if not tab then return end
+	if table.empty(tab) then return end
 	for _, cloud in ipairs(tab) do
 		for _, name in ipairs(NAME_PARTICLE_SYSTEMS) do
 			local particleSystem = cloud:getObjectByName(name)
@@ -264,8 +261,7 @@ local function reColourTable(tab, cloudColour, speed, angle)
 end
 
 local function reColour()
-	if not tracker then return end
-	if table.empty(tracker) then return end
+
 	local output = getOutputValues()
 	local cloudColour = output.colours
 	local speed = output.speed
