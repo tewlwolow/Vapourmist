@@ -3,26 +3,53 @@ local util = require("tew.Vapourmist.components.util")
 local debugLog = util.debugLog
 local config = require("tew.Vapourmist.config")
 
+local FOG_ID = "tew_mist"
+
 local MAX_DISTANCE = 8192 * 3
-local MAX_DEPTH = 8192 / 10
-local MAX_DENSITY = 10
-local STEPS = 50
-local mistDensity = 0
+local BASE_DEPTH = 8192 / 10
+
 local WtC = tes3.worldController.weatherController
 local WorldC = tes3.worldController
 
 local TIMER_DURATION = 0.3
+
 local FADE_DURATION = 0.05
+local STEPS = 100
+local mistDensity = 0
 
 local mistDeployed = false
-
-local FOG_ID = "tew_mist"
 
 local toWeather, postRainMist
 
 local wetWeathers = {
     ["Rain"] = true,
     ["Thunderstorm"] = true
+}
+
+local radiusFactors = {
+    ["Clear"] = 1.7,
+    ["Cloudy"] = 1.2,
+    ["Foggy"] = 1.5,
+    ["Overcast"] = 2,
+    ["Rain"] = 1,
+    ["Thunderstorm"] = 1,
+    ["Ash"] = 1,
+    ["Blight"] = 1,
+    ["Snow"] = 1,
+    ["Blizzard"] = 1
+}
+
+local densities = {
+    ["Clear"] = 10,
+    ["Cloudy"] = 14,
+    ["Foggy"] = 20,
+    ["Overcast"] = 18,
+    ["Rain"] = 10,
+    ["Thunderstorm"] = 10,
+    ["Ash"] = 10,
+    ["Blight"] = 10,
+    ["Snow"] = 10,
+    ["Blizzard"] = 10
 }
 
 local mist = {}
@@ -34,7 +61,7 @@ local FOG_TIMER, FADE_IN_TIMER, FADE_OUT_TIMER, FADE_OUT_REMOVE_TIMER
 local fogParams = {
     color = tes3vector3.new(),
     center = tes3vector3.new(),
-    radius = tes3vector3.new(MAX_DISTANCE, MAX_DISTANCE, MAX_DEPTH),
+    radius = tes3vector3.new(MAX_DISTANCE, MAX_DISTANCE, BASE_DEPTH),
     density = mistDensity,
 }
 
@@ -82,17 +109,24 @@ local function getOutputValues()
 end
 
 local function fadeIn()
-    if mistDensity >= MAX_DENSITY then return end
-    mistDensity = mistDensity + (MAX_DENSITY/STEPS)
+    local density = densities[toWeather.name]
+    if mistDensity >= density then
+        mistDensity = density
+        return
+    end
+    mistDensity = mistDensity + (density/STEPS)
 end
 
 local function fadeOut()
-    if mistDensity <= 0 then return end
-    mistDensity = mistDensity - (MAX_DENSITY/STEPS)
+    local density = densities[toWeather.name]
+    if mistDensity <= 0 then
+        mistDensity = 0
+        return
+    end
+    mistDensity = mistDensity - (density/STEPS)
 end
 
 local function updateMist()
-    debugLog("Updating mist")
     if tes3.player.cell.isInterior then
         return
     end
@@ -104,10 +138,11 @@ local function updateMist()
         (playerPos.y),
         0
     )
-    debug.log(tostring(mistDensity))
+    fogParams.radius.z = BASE_DEPTH * radiusFactors[toWeather.name]
     fogParams.density = mistDensity
     fogParams.center = mistCenter
     fogParams.color = getOutputValues()
+    debug.log(mistDensity)
     shader.createOrUpdateFog(FOG_ID, fogParams)
 end
 
@@ -131,9 +166,9 @@ function mist.onLoaded()
 end
 
 function mist.onWeatherChanged(e)
-    local fromWeather = e.from.name
-    toWeather = e.to.name
-	if wetWeathers[fromWeather] and config.blockedMist[toWeather] ~= true then
+    local fromWeather = e.from
+    toWeather = e.to
+	if wetWeathers[fromWeather.name] and config.blockedMist[toWeather.name] ~= true then
 		debugLog("Adding post-rain mist.")
 
 		-- Slight offset so it makes sense --
@@ -161,8 +196,17 @@ end
 
 local function stopTimer(timerVal)
     if timerVal and timerVal.state ~= timer.expired then
+        timerVal:pause()
         timerVal:cancel()
+        debug.log("Stopping timer.")
     end
+end
+
+local function removeFog()
+    mistDeployed = false
+    FOG_TIMER:pause()
+    shader.deleteFog(FOG_ID)
+    debug.log("Mist removed.")
 end
 
 function mist.conditionCheck()
@@ -192,26 +236,24 @@ function mist.conditionCheck()
             mistDeployed = true
         end
     else
-        debugLog("Mist not available.")
-        stopTimer(FADE_IN_TIMER)
-        FADE_OUT_TIMER = timer.start{
-            duration = FADE_DURATION,
-            callback = fadeOut,
-            iterations = STEPS,
-            type = timer.game,
-            persist = false
-        }
-        FADE_OUT_REMOVE_TIMER = timer.start{
-            duration = (FADE_DURATION*STEPS) + FADE_DURATION,
-            callback = function()
-                mistDeployed = false
-                FOG_TIMER:pause()
-                shader.deleteFog(FOG_ID)
-            end,
-            iterations = 1,
-            type = timer.game,
-            persist = false
-        }
+        if mistDeployed then
+            debugLog("Mist not available.")
+            stopTimer(FADE_IN_TIMER)
+            FADE_OUT_TIMER = timer.start{
+                duration = FADE_DURATION,
+                callback = fadeOut,
+                iterations = STEPS,
+                type = timer.game,
+                persist = false
+            }
+            FADE_OUT_REMOVE_TIMER = timer.start{
+                duration = (FADE_DURATION*STEPS) + FADE_DURATION,
+                callback = removeFog,
+                iterations = 1,
+                type = timer.game,
+                persist = false
+            }
+        end
     end
 end
 
