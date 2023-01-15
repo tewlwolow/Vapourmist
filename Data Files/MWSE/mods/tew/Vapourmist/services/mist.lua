@@ -141,7 +141,6 @@ local function updateMist()
     fogParams.density = mistDensity
     fogParams.center = mistCenter
     fogParams.color = getOutputValues()
-    debug.log(mistDensity)
     shader.createOrUpdateFog(FOG_ID, fogParams)
 end
 
@@ -197,7 +196,6 @@ local function stopTimer(timerVal)
     if timerVal and timerVal.state ~= timer.expired then
         timerVal:pause()
         timerVal:cancel()
-        debug.log("Stopping timer.")
     end
 end
 
@@ -205,7 +203,6 @@ local function removeFog()
     mistDeployed = false
     FOG_TIMER:pause()
     shader.deleteFog(FOG_ID)
-    debug.log("Mist removed.")
 end
 
 function mist.conditionCheck()
