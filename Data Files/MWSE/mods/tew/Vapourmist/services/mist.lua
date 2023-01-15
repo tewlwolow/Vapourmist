@@ -200,7 +200,6 @@ local function stopTimer(timerVal)
 end
 
 local function removeFog()
-    mistDeployed = false
     FOG_TIMER:pause()
     shader.deleteFog(FOG_ID)
 end
@@ -249,6 +248,7 @@ function mist.conditionCheck()
                 type = timer.game,
                 persist = false
             }
+            mistDeployed = false
         end
     end
 end
