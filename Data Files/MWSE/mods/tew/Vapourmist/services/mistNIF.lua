@@ -23,9 +23,11 @@ local MAX_DEPTH = 800
 local MIN_BIRTHRATE = 1.8
 local MAX_BIRTHRATE = 2.4
 
+local SIZE_COEFF = 4
+
 local MIN_SPEED = 15
 
-local CUTOFF_COEFF = 4
+local CUTOFF_COEFF = 2
 
 local HEIGHTS = {640, 650, 680}
 local SIZES = {700, 800, 1100, 1243, 1450, 1520}
@@ -97,20 +99,19 @@ local function isAvailable(weather, gameHour)
     )
 end
 
-local function getParticleSystemSize(drawDistance)
-	return (CELL_SIZE * drawDistance)
+local function getParticleSystemSize()
+	return (CELL_SIZE * SIZE_COEFF)
 end
 
-local function getCutoffDistance(drawDistance)
-	return getParticleSystemSize(drawDistance) / CUTOFF_COEFF
+local function getCutoffDistance()
+	return getParticleSystemSize() / CUTOFF_COEFF
 end
 
 local function isPlayerClouded(mistMesh)
 	debugLog("Checking if player is clouded.")
 	local mp = tes3.mobilePlayer
 	local playerPos = mp.position:copy()
-	local drawDistance = mge.distantLandRenderConfig.drawDistance
-	return playerPos:distance(mistMesh.translation:copy()) < (getCutoffDistance(drawDistance))
+	return playerPos:distance(mistMesh.translation:copy()) < (getCutoffDistance())
 end
 
 
@@ -293,11 +294,10 @@ end
 
 local function deployEmitter(particleSystem)
 	math.randomseed(os.time())
-	local drawDistance = mge.distantLandRenderConfig.drawDistance
 
 	local controller = particleSystem.controller
 
-	local birthRate = math.random(MIN_BIRTHRATE, MAX_BIRTHRATE) * drawDistance
+	local birthRate = math.random(MIN_BIRTHRATE, MAX_BIRTHRATE) * SIZE_COEFF
 	controller.birthRate = birthRate
 	controller.useBirthRate = true
 
@@ -305,7 +305,7 @@ local function deployEmitter(particleSystem)
 	controller.lifespan = lifespan
 	controller.emitStopTime = lifespan * lifespan
 
-	local effectSize = getParticleSystemSize(drawDistance)
+	local effectSize = getParticleSystemSize()
 
 	controller.emitterWidth = effectSize
 	controller.emitterHeight = effectSize
