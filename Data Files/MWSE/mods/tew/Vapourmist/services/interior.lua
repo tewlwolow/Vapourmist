@@ -180,7 +180,6 @@ function interior.onCellChanged(e)
 	local cell = e.cell
 	if not (cell.isOrBehavesAsExterior) then
 		debugLog("Starting interior check.")
-		event.trigger("VAPOURMIST:enteredInterior")
 
 		-- Only proceed if the cell is eligible for interior fog and is not already fogged --
 		if not isAvailable(cell) or isCellFogged(cell) then

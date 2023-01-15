@@ -16,14 +16,27 @@ local services = {
 			event.register(tes3.event.uiActivated, clouds.onWaitMenu, { filter = "MenuTimePass"})
 		end
 	},
-	mist = {
+	mistShader = {
 		init = function()
-			local mist = require("tew.Vapourmist.services.mist")
-			event.register(tes3.event.loaded, mist.onLoaded)
-			event.register(tes3.event.cellChanged, mist.conditionCheck)
-			event.register(tes3.event.weatherTransitionStarted, mist.onWeatherChanged)
-			event.register(tes3.event.weatherChangedImmediate, mist.conditionCheck)
-			event.register(tes3.event.uiActivated, mist.onWaitMenu, { filter = "MenuTimePass"})
+			local mistShader = require("tew.Vapourmist.services.mistShader")
+			event.register("VAPOURMIST:enteredInterior", mistShader.removeMist)
+			event.register(tes3.event.loaded, mistShader.onLoaded)
+			event.register(tes3.event.cellChanged, mistShader.conditionCheck)
+			event.register(tes3.event.weatherTransitionStarted, mistShader.onWeatherChanged)
+			event.register(tes3.event.weatherChangedImmediate, mistShader.conditionCheck)
+			event.register(tes3.event.uiActivated, mistShader.onWaitMenu, { filter = "MenuTimePass"})
+		end
+	},
+	mistNIF = {
+		init = function()
+			local mistNIF = require("tew.Vapourmist.services.mistNIF")
+			event.register("VAPOURMIST:enteredInterior", mistNIF.detachAll)
+			event.register(tes3.event.loaded, mistNIF.onLoaded)
+			event.register(tes3.event.cellChanged, mistNIF.conditionCheck)
+			event.register(tes3.event.weatherChangedImmediate, mistNIF.conditionCheck)
+			event.register(tes3.event.weatherTransitionStarted, mistNIF.onWeatherChanged)
+			event.register(tes3.event.weatherTransitionFinished, mistNIF.conditionCheck)
+			event.register(tes3.event.uiActivated, mistNIF.onWaitMenu, { filter = "MenuTimePass"})
 		end
 	},
 	interior = {
@@ -39,3 +52,14 @@ for serviceName, service in pairs(services) do
 		service.init()
 	end
 end
+
+-->>>---------------------------------------------------------------------------------------------<<<--
+
+local function interiorCheck(e)
+	local cell = e.cell
+	if not (cell.isOrBehavesAsExterior) then
+		event.trigger("VAPOURMIST:enteredInterior")
+	end
+end
+
+event.register(tes3.event.cellChanged, interiorCheck)
