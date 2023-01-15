@@ -20,14 +20,14 @@ local MAX_LIFESPAN = 30
 local MIN_DEPTH = 200
 local MAX_DEPTH = 500
 
-local MIN_BIRTHRATE = 1
+local MIN_BIRTHRATE = 1.3
 local MAX_BIRTHRATE = 2
 
 local SIZE_COEFF = 8
 local CUTOFF_COEFF = 1.5
 
-local HEIGHTS = {1080, 1156, 1200, 1300, 1450}
-local SIZES = {500, 650, 700, 800, 1100, 1200}
+local HEIGHTS = {1080, 1156, 1200, 1300}
+local SIZES = {580, 650, 700, 800, 1100, 1200}
 
 local wetWeathers = {
     ["Rain"] = true,
