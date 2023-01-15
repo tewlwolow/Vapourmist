@@ -25,8 +25,6 @@ local MAX_BIRTHRATE = 2.4
 
 local SIZE_COEFF = 4
 
-local MIN_SPEED = 15
-
 local CUTOFF_COEFF = 2
 
 local HEIGHTS = {640, 650, 680}
@@ -238,13 +236,11 @@ local function getOutputValues()
 			r = getBleachedColour(weatherColour.r),
 			g = getBleachedColour(weatherColour.g),
 			b = getBleachedColour(weatherColour.b)
-		},
-		angle = WtC.windVelocityCurrWeather:normalized():copy().y * math.pi * 0.5,
-		speed = math.max(WtC.currentWeather.cloudsSpeed * config.speedCoefficient, MIN_SPEED)
+		}
 	}
 end
 
-local function reColourTable(tab, cloudColour, speed, angle)
+local function reColourTable(tab, cloudColour)
 	if not tab then return end
 	if table.empty(tab) then return end
 	for _, mist in ipairs(tab) do
@@ -253,9 +249,6 @@ local function reColourTable(tab, cloudColour, speed, angle)
 
 			local controller = particleSystem.controller
 			local colorModifier = controller.particleModifiers
-
-			controller.speed = speed
-			controller.planarAngle = angle
 
 			for _, key in pairs(colorModifier.colorData.keys) do
 				key.color.r = cloudColour.r
@@ -283,11 +276,9 @@ local function reColour()
 
 	local output = getOutputValues()
 	local cloudColour = output.colours
-	local speed = output.speed
-	local angle = output.angle
 
-	reColourTable(tracker, cloudColour, speed, angle)
-	reColourTable(appCulledTracker, cloudColour, speed, angle)
+	reColourTable(tracker, cloudColour)
+	reColourTable(appCulledTracker, cloudColour)
 end
 
 -- NIF values logic
