@@ -24,7 +24,18 @@ mainPage:createYesNoButton {
     variable = registerVariable("debugLogOn"),
     restartRequired = true
 }
-
+mainPage:createYesNoButton {
+    label = "Enable clouds?",
+    variable = registerVariable("clouds"),
+}
+mainPage:createYesNoButton {
+    label = "Enable shader-based mist (compatible with NIF-based mist)?",
+    variable = registerVariable("mistShader"),
+}
+mainPage:createYesNoButton {
+    label = "Enable NIF-based mist (compatible with shader-based mist)?",
+    variable = registerVariable("mistNIF"),
+}
 mainPage:createYesNoButton {
     label = "Enable interior fog?",
     variable = registerVariable("interiorFog"),
@@ -184,9 +195,6 @@ blockedPage:createExclusionsPage {
 
     }
 }
-
-
-
 
 template:saveOnClose(configPath, config)
 mwse.mcm.register(template)
