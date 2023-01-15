@@ -88,11 +88,11 @@ local function isAvailable(weather, gameHour)
 end
 
 local function getCloudColourMix(fogComp, skyComp)
-    return math.lerp(fogComp, skyComp, 0.2)
+    return math.lerp(fogComp, skyComp, 0.1)
 end
 
-local function getDarkerColour(comp)
-    return math.clamp(math.lerp(comp, 0.0, 0.1), 0.03, 0.9)
+local function getBleachedColour(comp)
+    return math.clamp(math.lerp(comp, 1.0, 0.07), 0.03, 0.9)
 end
 
 -- Calculate output colours from current fog colour --
@@ -106,9 +106,9 @@ local function getOutputValues()
     }
 
     return tes3vector3.new(
-    getDarkerColour(weatherColour.r),
-    getDarkerColour(weatherColour.g),
-    getDarkerColour(weatherColour.b)
+    getBleachedColour(weatherColour.r),
+    getBleachedColour(weatherColour.g),
+    getBleachedColour(weatherColour.b)
 )
 end
 

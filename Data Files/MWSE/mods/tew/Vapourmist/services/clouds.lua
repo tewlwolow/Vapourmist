@@ -198,11 +198,11 @@ end
 -- Colour logic
 
 local function getCloudColourMix(fogComp, skyComp)
-	return math.lerp(fogComp, skyComp, 0.05)
+	return math.lerp(fogComp, skyComp, 0.12)
 end
 
 local function getBleachedColour(comp)
-	return math.clamp(math.lerp(comp, 1.0, 0.02), 0.03, 0.88)
+	return math.clamp(math.lerp(comp, 1.0, 0.05), 0.03, 0.88)
 end
 
 -- Calculate output colours from current fog colour --
