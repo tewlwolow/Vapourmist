@@ -22,8 +22,8 @@ local services = {
 			event.register("VAPOURMIST:enteredInterior", mistShader.removeMist)
 			event.register(tes3.event.loaded, mistShader.onLoaded)
 			event.register(tes3.event.cellChanged, mistShader.conditionCheck)
+			event.register(tes3.event.weatherChangedImmediate, mistShader.onWeatherChangedImmediate)
 			event.register(tes3.event.weatherTransitionStarted, mistShader.onWeatherChanged)
-			event.register(tes3.event.weatherChangedImmediate, mistShader.conditionCheck)
 			event.register(tes3.event.uiActivated, mistShader.onWaitMenu, { filter = "MenuTimePass"})
 		end
 	},

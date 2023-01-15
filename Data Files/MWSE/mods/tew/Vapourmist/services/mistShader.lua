@@ -67,6 +67,7 @@ local function stopTimer(timerVal)
     if timerVal and timerVal.state ~= timer.expired then
         timerVal:pause()
         timerVal:cancel()
+        debugLog("Timer paused and cancelled.")
     end
 end
 
@@ -175,6 +176,7 @@ function mistShader.removeMist()
     stopTimer(FADE_OUT_REMOVE_TIMER)
     stopTimer(FADE_IN_TIMER)
     shader.deleteFog(FOG_ID)
+    debugLog("Mist shader removed.")
 end
 
 local function waitingCheck()
@@ -232,6 +234,7 @@ function mistShader.immediateCheck()
     local region = tes3.getPlayerCell().region
 
     if lastRegion ~= region then
+        debugLog("Player switched regions.")
         mistShader.removeMist()
         lastRegion = region
         return
@@ -239,7 +242,18 @@ function mistShader.immediateCheck()
     lastRegion = region
 end
 
+function mistShader.onWeatherChangedImmediate(e)
+    local gameHour = WorldC.hour.value
+    if not isAvailable(e.to, gameHour) then
+        debugLog("Weather changed immediate but mist not available.")
+        mistShader.removeMist()
+        return
+    end
+    mistShader.immediateCheck()
+end
+
 function mistShader.conditionCheck()
+    debugLog("Starting condition check.")
     local cell = tes3.getPlayerCell()
     if not cell.isOrBehavesAsExterior then
         FOG_TIMER:pause()
