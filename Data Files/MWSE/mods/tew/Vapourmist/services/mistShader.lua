@@ -186,7 +186,7 @@ local function waitingCheck()
 	if (not mp) or (mp and (mp.waiting or mp.traveling)) then
 		toWeather = WtC.nextWeather or WtC.currentWeather
 		if not isAvailable(toWeather, gameHour) then
-			debugLog("Player waiting or travelling and clouds not available.")
+			debugLog("Player waiting or travelling and mist not available.")
 			mistShader.removeMist()
 		end
 	end

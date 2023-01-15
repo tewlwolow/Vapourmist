@@ -158,7 +158,7 @@ end
 local function detach(vfxRoot, node)
 	removeFromAppCulledTracker(node)
 	vfxRoot:detachChild(node)
-	debugLog("Cloud detached.")
+	debugLog("Mist detached.")
 	removeFromRemoveQueue(node)
 	removeFromTracker(node)
 end
@@ -239,7 +239,7 @@ local function getOutputValues()
 	}
 end
 
-local function reColourTable(tab, cloudColour)
+local function reColourTable(tab, mistColour)
 	if not tab then return end
 	if table.empty(tab) then return end
 	for _, mist in ipairs(tab) do
@@ -250,16 +250,16 @@ local function reColourTable(tab, cloudColour)
 			local colorModifier = controller.particleModifiers
 
 			for _, key in pairs(colorModifier.colorData.keys) do
-				key.color.r = cloudColour.r
-				key.color.g = cloudColour.g
-				key.color.b = cloudColour.b
+				key.color.r = mistColour.r
+				key.color.g = mistColour.g
+				key.color.b = mistColour.b
 			end
 
 			local materialProperty = particleSystem.materialProperty
-			materialProperty.emissive = cloudColour
-			materialProperty.specular = cloudColour
-			materialProperty.diffuse = cloudColour
-			materialProperty.ambient = cloudColour
+			materialProperty.emissive = mistColour
+			materialProperty.specular = mistColour
+			materialProperty.diffuse = mistColour
+			materialProperty.ambient = mistColour
 
 			particleSystem:update()
 			particleSystem:updateProperties()
@@ -274,10 +274,10 @@ end
 local function reColour()
 
 	local output = getOutputValues()
-	local cloudColour = output.colours
+	local mistColour = output.colours
 
-	reColourTable(tracker, cloudColour)
-	reColourTable(appCulledTracker, cloudColour)
+	reColourTable(tracker, mistColour)
+	reColourTable(appCulledTracker, mistColour)
 end
 
 -- NIF values logic
@@ -320,7 +320,7 @@ local function addMist()
 
 	local playerPos = mp.position:copy()
 
-	local cloudPosition = tes3vector3.new(
+	local mistPosition = tes3vector3.new(
 		playerPos.x,
 		playerPos.y,
 		getMistPosition(cell)
@@ -328,26 +328,26 @@ local function addMist()
 
 	local mistMesh = MESH:clone()
 	mistMesh:clearTransforms()
-	mistMesh.translation = cloudPosition
+	mistMesh.translation = mistPosition
 
 	vfxRoot:attachChild(mistMesh)
 
-	local cloudNode
+	local mistNode
 	for _, node in pairs(vfxRoot.children) do
 		if node then
 			if node.name == NAME_MAIN then
 				if not table.find(removeQueue, node) then
-					cloudNode = node
+					mistNode = node
 				end
 			end
 		end
 	end
-	if not cloudNode then return end
+	if not mistNode then return end
 
-	addToTracker(cloudNode)
+	addToTracker(mistNode)
 
 	for _, name in ipairs(NAME_PARTICLE_SYSTEMS) do
-		local particleSystem = cloudNode:getObjectByName(name)
+		local particleSystem = mistNode:getObjectByName(name)
 		if particleSystem then
 			deployEmitter(particleSystem)
 		end
