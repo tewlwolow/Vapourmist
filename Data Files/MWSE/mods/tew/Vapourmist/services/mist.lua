@@ -54,10 +54,8 @@ local densities = {
 
 local mist = {}
 
----@type mwseTimer
 local FOG_TIMER, FADE_IN_TIMER, FADE_OUT_TIMER, FADE_OUT_REMOVE_TIMER
 
----@type fogParams
 local fogParams = {
     color = tes3vector3.new(),
     center = tes3vector3.new(),
@@ -138,6 +136,7 @@ local function updateMist()
         (playerPos.y),
         0
     )
+
     fogParams.radius.z = BASE_DEPTH * radiusFactors[toWeather.name]
     fogParams.density = mistDensity
     fogParams.center = mistCenter
