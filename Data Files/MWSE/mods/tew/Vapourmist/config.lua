@@ -3,18 +3,18 @@ return mwse.loadConfig (
     {
         speedCoefficient = 45,
         debugLogOn = false,
-        clouds = false,
-        mistShader = false,
+        clouds = true,
+        mistShader = true,
         mistNIF = true,
         interior = true,
         cloudyWeathers = {
             ["Cloudy"] = true,
-            ["Foggy"] = true,
             ["Rain"] = true,
             ["Thunderstorm"] = true
         },
         mistyWeathers = {
             ["Foggy"] = true,
+            ["Overcast"] = true
         },
         blockedCloud = {
             ["Ash"] = true,
