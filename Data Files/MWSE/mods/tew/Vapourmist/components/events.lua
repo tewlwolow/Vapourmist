@@ -22,6 +22,8 @@ local services = {
 			event.register(tes3.event.loaded, mist.onLoaded)
 			event.register(tes3.event.cellChanged, mist.conditionCheck)
 			event.register(tes3.event.weatherTransitionStarted, mist.onWeatherChanged)
+			event.register(tes3.event.weatherChangedImmediate, mist.conditionCheck)
+			event.register(tes3.event.uiActivated, mist.onWaitMenu, { filter = "MenuTimePass"})
 		end
 	},
 	interior = {
