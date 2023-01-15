@@ -10,7 +10,7 @@ local config = require("tew.Vapourmist.config")
 -->>>---------------------------------------------------------------------------------------------<<<--
 -- Constants
 
-local TIMER_DURATION = 0.2
+local TIMER_DURATION = 0.1
 
 local CELL_SIZE = 8192
 
@@ -20,13 +20,13 @@ local MAX_LIFESPAN = 30
 local MIN_DEPTH = 200
 local MAX_DEPTH = 500
 
-local MIN_BIRTHRATE = 1.5
-local MAX_BIRTHRATE = 2.2
+local MIN_BIRTHRATE = 1
+local MAX_BIRTHRATE = 2
 
 local SIZE_COEFF = 8
 local CUTOFF_COEFF = 1.5
 
-local HEIGHTS = {640, 650, 680}
+local HEIGHTS = {1080, 1156, 1200, 1300, 1450}
 local SIZES = {500, 650, 700, 800, 1100, 1200}
 
 local wetWeathers = {
