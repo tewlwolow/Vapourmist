@@ -89,7 +89,7 @@ local function isAvailable(weather, gameHour)
     )
 end
 
-local function getCloudColourMix(fogComp, skyComp)
+local function getMistColourMix(fogComp, skyComp)
     return math.lerp(fogComp, skyComp, 0.1)
 end
 
@@ -102,9 +102,9 @@ local function getOutputValues()
     local currentFogColor = WtC.currentFogColor:copy()
     local currentSkyColor = WtC.currentSkyColor:copy()
     local weatherColour = {
-        r = getCloudColourMix(currentFogColor.r, currentSkyColor.r),
-        g = getCloudColourMix(currentFogColor.g, currentSkyColor.g),
-        b = getCloudColourMix(currentFogColor.b, currentSkyColor.b)
+        r = getMistColourMix(currentFogColor.r, currentSkyColor.r),
+        g = getMistColourMix(currentFogColor.g, currentSkyColor.g),
+        b = getMistColourMix(currentFogColor.b, currentSkyColor.b)
     }
 
     return tes3vector3.new(
@@ -175,6 +175,7 @@ function mistShader.removeMist()
     stopTimer(FADE_OUT_TIMER)
     stopTimer(FADE_OUT_REMOVE_TIMER)
     stopTimer(FADE_IN_TIMER)
+    mistDensity = 0
     shader.deleteFog(FOG_ID)
     debugLog("Mist shader removed.")
 end
