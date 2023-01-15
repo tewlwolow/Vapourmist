@@ -14,17 +14,16 @@ local TIMER_DURATION = 0.3
 
 local CELL_SIZE = 8192
 
-local MIN_LIFESPAN = 12
-local MAX_LIFESPAN = 23
+local MIN_LIFESPAN = 15
+local MAX_LIFESPAN = 30
 
-local MIN_DEPTH = 300
-local MAX_DEPTH = 800
+local MIN_DEPTH = 200
+local MAX_DEPTH = 500
 
-local MIN_BIRTHRATE = 1.8
-local MAX_BIRTHRATE = 2.4
+local MIN_BIRTHRATE = 2
+local MAX_BIRTHRATE = 3
 
 local SIZE_COEFF = 4
-
 local CUTOFF_COEFF = 2
 
 local HEIGHTS = {640, 650, 680}
