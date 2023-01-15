@@ -10,7 +10,7 @@ local config = require("tew.Vapourmist.config")
 -->>>---------------------------------------------------------------------------------------------<<<--
 -- Constants
 
-local TIMER_DURATION = 0.1
+local TIMER_DURATION = 0.3
 
 local CELL_SIZE = 8192
 
