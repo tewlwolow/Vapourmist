@@ -27,7 +27,7 @@ local wetWeathers = {
 }
 
 local radiusFactors = {
-    ["Clear"] = 1.7,
+    ["Clear"] = 1.5,
     ["Cloudy"] = 1.2,
     ["Foggy"] = 1.5,
     ["Overcast"] = 2,
@@ -41,9 +41,9 @@ local radiusFactors = {
 
 local densities = {
     ["Clear"] = 10,
-    ["Cloudy"] = 14,
-    ["Foggy"] = 20,
-    ["Overcast"] = 18,
+    ["Cloudy"] = 12,
+    ["Foggy"] = 18,
+    ["Overcast"] = 17,
     ["Rain"] = 10,
     ["Thunderstorm"] = 10,
     ["Ash"] = 10,
