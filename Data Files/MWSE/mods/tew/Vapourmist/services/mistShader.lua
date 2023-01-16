@@ -212,11 +212,12 @@ function mistShader.onWeatherChanged(e)
 		timer.start {
 			type = timer.game,
 			iterations = 1,
-			duration = 0.3,
+			duration = 0.06,
 			callback = function()
                 postRainMist = true
+                mistDensity = 0
                 updateMist()
-                FOG_TIMER:resume()
+                mistShader.conditionCheck()
             end
 		}
 
