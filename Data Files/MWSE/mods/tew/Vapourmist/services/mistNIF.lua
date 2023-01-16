@@ -392,13 +392,20 @@ function mistNIF.onWeatherChanged(e)
 
 	if not isAvailable(toWeather, gameHour) then
 		appCullAll()
-		return
 	end
 
-	if not table.empty(tracker) then return end
-
 	if wetWeathers[fromWeather.name] and config.blockedMist[toWeather.name] ~= true then
-		addMist()
+		debugLog("Setting timer for post-rain mist.")
+		-- Slight offset so it makes sense --
+		timer.start {
+			type = timer.game,
+			iterations = 1,
+			duration = 0.15,
+			callback = function()
+				debugLog("Deploying post-rain mist.")
+				addMist()
+			end
+		}
 	end
 end
 
