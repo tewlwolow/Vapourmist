@@ -1,7 +1,7 @@
 <!-- PROJECT LOGO -->
 <div align="center">
   <a href="https://github.com/tewlwolow/Vapourmist">
-    <img src="https://staticdelivery.nexusmods.com/mods/100/images/50517/50517-1639328186-1974107040.png" alt="Logo" width="256">
+    <img src="https://staticdelivery.nexusmods.com/mods/100/images/50517/50517-1673904607-288924442.png" alt="Logo" width="256">
   </a>
 </div>
 
