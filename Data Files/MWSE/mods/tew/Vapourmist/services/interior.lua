@@ -89,14 +89,9 @@ local function updateTracker(fogMesh, cell)
 	tracker[fogMesh] = cell
 end
 
-local function removeFromTracker(cell)
-	local pos = table.find(tracker, cell)
-	if pos then
-		table.remove(tracker, pos)
-	end
-end
-
 local function removeAllFog()
+	if not tracker or table.empty(tracker) then return end
+
 	local vfxRoot = tes3.game.worldSceneGraphRoot.children[9]
 	for _, node in pairs(vfxRoot.children) do
 		if node and node.name == NAME_MAIN then
@@ -176,24 +171,14 @@ local function addFog(cell)
 end
 
 function interior.onCellChanged(e)
-	-- If we're in an interior then clean up exterior fog --
 	local cell = e.cell
+	removeAllFog()
 	if not (cell.isOrBehavesAsExterior) then
 		debugLog("Starting interior check.")
 
-		-- Only proceed if the cell is eligible for interior fog and is not already fogged --
-		if not isAvailable(cell) or isCellFogged(cell) then
-			return
+		if (isAvailable(cell)) and not (isCellFogged(cell)) then
+			addFog(cell)
 		end
-
-		addFog(cell)
-	else
-		removeAllFog()
-	end
-
-	local previousCell = e.previousCell
-	if previousCell and not (previousCell.isOrBehavesAsExterior) then
-		removeFromTracker(previousCell)
 	end
 end
 
