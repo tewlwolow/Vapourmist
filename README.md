@@ -30,3 +30,4 @@ You can find the previous mod iterations here:
 
 ## :heavy_check_mark: Feature Tracker
 - [ ] Experiment with shader in interiors
+- [ ] Experiment with colliding particles
