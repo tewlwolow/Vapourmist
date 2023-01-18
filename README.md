@@ -28,4 +28,4 @@ You can find the previous mod iterations here:
 -  [tew](https://github.com/tewlwolow/tew)
 -  [Vapourmist-old](https://github.com/tewlwolow/Vapourmist-old)
 
-## :heavy_check_mark: Feature tracker
+## :heavy_check_mark: Feature Tracker
