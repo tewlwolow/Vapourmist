@@ -20,8 +20,8 @@ local MAX_LIFESPAN = 30
 local MIN_DEPTH = 200
 local MAX_DEPTH = 500
 
-local MIN_BIRTHRATE = 1.3
-local MAX_BIRTHRATE = 2
+local MIN_BIRTHRATE = 1.2
+local MAX_BIRTHRATE = 1.8
 
 local CUTOFF_COEFF = 4
 
@@ -218,7 +218,7 @@ local function getMistColourMix(fogComp, skyComp)
 end
 
 local function getBleachedColour(comp)
-	return math.clamp(math.lerp(comp, 1.0, 0.1), 0.03, 0.88)
+	return math.clamp(math.lerp(comp, 1.0, 0.08), 0.03, 0.88)
 end
 
 -- Calculate output colours from current fog colour --
