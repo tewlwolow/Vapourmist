@@ -4,7 +4,7 @@
 local util = {}
 
 local config = require("tew.Vapourmist.config")
-local modversion = require("tew.Watch the Skies.version")
+local modversion = require("tew.Vapourmist.version")
 local VERSION = modversion.version
 
 -- Print debug messages --
