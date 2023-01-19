@@ -29,5 +29,5 @@ You can find the previous mod iterations here:
 -  [Vapourmist-old](https://github.com/tewlwolow/Vapourmist-old)
 
 ## :heavy_check_mark: Feature Tracker
-- [ ] Experiment with shader in interiors
-- [ ] Experiment with colliding particles
+> - [ ] Experiment with shader in interiors
+> - [ ] Experiment with colliding particles
