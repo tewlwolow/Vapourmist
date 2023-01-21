@@ -13,7 +13,7 @@ local WorldC = tes3.worldController
 
 local TIMER_DURATION = 0.3
 
-local FADE_DURATION = 0.05
+local FADE_DURATION = 0.02
 local STEPS = 100
 local mistDensity = 0
 
