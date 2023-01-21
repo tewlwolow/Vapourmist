@@ -217,8 +217,8 @@ local function getMistColourMix(fogComp, skyComp)
 	return math.lerp(fogComp, skyComp, 0.08)
 end
 
-local function getBleachedColour(comp)
-	return math.clamp(math.lerp(comp, 1.0, 0.08), 0.03, 0.88)
+local function getModifiedColour(comp)
+	return math.clamp(math.lerp(comp, 0.0, 0.04), 0.03, 0.88)
 end
 
 -- Calculate output colours from current fog colour --
@@ -232,9 +232,9 @@ local function getOutputValues()
 	}
 	return {
 		colours = {
-			r = getBleachedColour(weatherColour.r),
-			g = getBleachedColour(weatherColour.g),
-			b = getBleachedColour(weatherColour.b)
+			r = getModifiedColour(weatherColour.r),
+			g = getModifiedColour(weatherColour.g),
+			b = getModifiedColour(weatherColour.b)
 		}
 	}
 end
