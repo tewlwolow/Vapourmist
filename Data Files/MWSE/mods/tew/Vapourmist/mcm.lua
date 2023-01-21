@@ -38,7 +38,7 @@ mainPage:createYesNoButton {
 }
 mainPage:createYesNoButton {
     label = "Enable interior fog?",
-    variable = registerVariable("interiorFog"),
+    variable = registerVariable("interior"),
 }
 
 mainPage:createSlider {
