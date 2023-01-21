@@ -136,9 +136,9 @@ local function addFog(cell)
 
 		local originalInteriorFogColor = cell.fogColor
 		local interiorFogColor = {
-			r = math.clamp(math.lerp(originalInteriorFogColor.r, 1.0, 0.5), 0.3, 0.85),
-			g = math.clamp(math.lerp(originalInteriorFogColor.r, 1.0, 0.46), 0.3, 0.85),
-			b = math.clamp(math.lerp(originalInteriorFogColor.r, 1.0, 0.42), 0.3, 0.85)
+			r = math.clamp(math.lerp(originalInteriorFogColor.r, 1.0, 0.05), 0.3, 0.85),
+			g = math.clamp(math.lerp(originalInteriorFogColor.r, 1.0, 0.046), 0.3, 0.85),
+			b = math.clamp(math.lerp(originalInteriorFogColor.r, 1.0, 0.042), 0.3, 0.85)
 		}
 
 		local particleSystem = fogMesh:getObjectByName(NAME_PARTICLE_SYSTEM)
