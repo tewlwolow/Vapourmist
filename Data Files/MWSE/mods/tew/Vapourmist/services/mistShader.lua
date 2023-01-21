@@ -93,8 +93,8 @@ local function getMistColourMix(fogComp, skyComp)
     return math.lerp(fogComp, skyComp, 0.1)
 end
 
-local function getBleachedColour(comp)
-    return math.clamp(math.lerp(comp, 1.0, 0.07), 0.03, 0.9)
+local function getModifiedColour(comp)
+    return math.clamp(math.lerp(comp, 1.0, 0.012), 0.03, 0.9)
 end
 
 -- Calculate output colours from current fog colour --
@@ -108,9 +108,9 @@ local function getOutputValues()
     }
 
     return tes3vector3.new(
-    getBleachedColour(weatherColour.r),
-    getBleachedColour(weatherColour.g),
-    getBleachedColour(weatherColour.b)
+    getModifiedColour(weatherColour.r),
+    getModifiedColour(weatherColour.g),
+    getModifiedColour(weatherColour.b)
 )
 end
 
