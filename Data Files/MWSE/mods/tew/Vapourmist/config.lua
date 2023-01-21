@@ -17,11 +17,11 @@ return mwse.loadConfig (
             ["Overcast"] = true
         },
         blockedCloud = {
-            ["Ash"] = true,
+            ["Ashstorm"] = true,
             ["Blight"] = true
         },
         blockedMist = {
-            ["Ash"] = true,
+            ["Ashstorm"] = true,
             ["Blight"] = true,
             ["Snow"] = true,
             ["Blizzard"] = true,
