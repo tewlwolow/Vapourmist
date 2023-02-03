@@ -5,6 +5,7 @@
 local interior = {}
 local util = require("tew.Vapourmist.components.util")
 local debugLog = util.debugLog
+local shader = require("tew.Vapourmist.components.shader")
 
 -->>>---------------------------------------------------------------------------------------------<<<--
 -- Constants
@@ -12,7 +13,16 @@ local debugLog = util.debugLog
 local MIN_STAT_COUNT = 5
 local MESH = tes3.loadMesh("tew\\Vapourmist\\vapourint.nif")
 local HEIGHT = -1300
-local SIZES = { 300, 400, 450, 500, 510, 550 }
+local SIZES = { 150, 170, 185, 190 }
+
+local MAX_DISTANCE = 8192 * 3
+local BASE_DEPTH = 8192 / 32
+local DENSITY = 6
+local BASE_COLOUR = {
+	r = 0.278,
+	g = 0.192,
+	b = 0.062
+}
 
 local NAME_MAIN = "tew_InteriorFog"
 local NAME_PARTICLE_SYSTEM = "tew_InteriorFog_ParticleSystem"
@@ -40,8 +50,8 @@ local interiorStatics = {
 	"t_glb_cave",
 	"t_mw_cave",
 	"t_sky_cave",
-	"bm_ic_",
-	"bm_ka"
+	-- "bm_ic_",
+	-- "bm_ka"
 }
 
 local interiorNames = {
@@ -99,6 +109,9 @@ local function removeAllFog()
 		end
 	end
 
+	---
+    shader.deleteFog(NAME_MAIN)
+
 	tracker = {}
 end
 
@@ -117,6 +130,34 @@ local function getFogPosition(cell)
 	return { x = pos.x / denom, y = pos.y / denom, z = pos.z / denom }
 end
 
+---@param val number
+---@param coeff string
+local function amplifyColour(val, coeff)
+	return math.clamp(math.lerp(BASE_COLOUR[coeff], val * 7, 0.4), 0.0, 1.0)
+end
+
+---@param cell tes3cell
+local function getAverageColour(cell)
+	local colour = {r = 0, g = 0, b = 0}
+	local denom = 0
+
+	for light in cell:iterateReferences(tes3.objectType.light) do
+		local object = light.object
+		colour.r = (object.color[1] or 126) / 255.0
+		colour.g = (object.color[2] or 126) / 255.0
+		colour.b = (object.color[3] or 126) / 255.0
+		denom = denom + 1
+	end
+
+	if not denom then
+		return BASE_COLOUR
+	else
+		return { r = amplifyColour(colour.r / denom, 'r'), g = amplifyColour(colour.g / denom, 'g'), b = amplifyColour(colour.b / denom, 'b') }
+	end
+end
+
+
+---@param cell tes3cell
 local function addFog(cell)
 	debugLog("Adding interior fog.")
 
@@ -134,12 +175,7 @@ local function addFog(cell)
 			pos.z + HEIGHT
 		)
 
-		local originalInteriorFogColor = cell.fogColor
-		local interiorFogColor = {
-			r = math.clamp(math.lerp(originalInteriorFogColor.r, 1.0, 0.05), 0.3, 0.85),
-			g = math.clamp(math.lerp(originalInteriorFogColor.r, 1.0, 0.046), 0.3, 0.85),
-			b = math.clamp(math.lerp(originalInteriorFogColor.r, 1.0, 0.042), 0.3, 0.85)
-		}
+		local interiorFogColor = getAverageColour(cell)
 
 		local particleSystem = fogMesh:getObjectByName(NAME_PARTICLE_SYSTEM)
 		local controller = particleSystem.controller
@@ -167,6 +203,24 @@ local function addFog(cell)
 		fogMesh:update()
 		fogMesh:updateProperties()
 		fogMesh:updateEffects()
+
+		---
+		local fogParams = {
+			color = tes3vector3.new(
+				interiorFogColor.r,
+				interiorFogColor.g,
+				interiorFogColor.b
+			),
+			center = tes3vector3.new(
+				pos.x,
+				pos.y,
+				pos.z + HEIGHT/9
+			),
+			radius = tes3vector3.new(MAX_DISTANCE, MAX_DISTANCE, BASE_DEPTH),
+			density = DENSITY,
+		}
+
+		shader.createOrUpdateFog(NAME_MAIN, fogParams)
 	end
 end
 
