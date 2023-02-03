@@ -21,7 +21,7 @@ local services = {
 			local mistShader = require("tew.Vapourmist.services.mistShader")
 			event.register("VAPOURMIST:enteredInterior", mistShader.removeMist)
 			event.register(tes3.event.loaded, mistShader.onLoaded)
-			event.register(tes3.event.cellChanged, mistShader.conditionCheck)
+			event.register(tes3.event.cellChanged, mistShader.conditionCheck, {priority = -500})
 			event.register(tes3.event.weatherChangedImmediate, mistShader.onWeatherChangedImmediate)
 			event.register(tes3.event.weatherTransitionStarted, mistShader.onWeatherChanged)
 			event.register(tes3.event.uiActivated, mistShader.onWaitMenu, { filter = "MenuTimePass"})
@@ -42,7 +42,7 @@ local services = {
 	interior = {
 		init = function()
 			local interior = require("tew.Vapourmist.services.interior")
-			event.register(tes3.event.cellChanged, interior.onCellChanged)
+			event.register(tes3.event.cellChanged, interior.onCellChanged, {priority = 500})
 		end
 	}
 }
