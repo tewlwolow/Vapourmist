@@ -17,7 +17,7 @@ local SIZES = { 150, 170, 185, 190 }
 
 local MAX_DISTANCE = 8192 * 3
 local BASE_DEPTH = 8192 / 32
-local DENSITY = 6
+local DENSITY = 5
 local BASE_COLOUR = {
 	r = 0.278,
 	g = 0.192,
@@ -133,7 +133,7 @@ end
 ---@param val number
 ---@param coeff string
 local function amplifyColour(val, coeff)
-	return math.clamp(math.lerp(BASE_COLOUR[coeff], val * 7, 0.4), 0.0, 1.0)
+	return math.clamp(math.lerp(BASE_COLOUR[coeff], val * 10, 0.4), 0.0, 1.0)
 end
 
 ---@param cell tes3cell
