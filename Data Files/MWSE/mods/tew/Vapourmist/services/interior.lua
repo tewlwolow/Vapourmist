@@ -26,7 +26,7 @@ local BASE_COLOUR = {
 
 local NAME_MAIN = "tew_InteriorFog"
 local NAME_PARTICLE_SYSTEM = "tew_InteriorFog_ParticleSystem"
-
+local NAME_EMITTER = "tew_InteriorFog_Emitter"
 
 -->>>---------------------------------------------------------------------------------------------<<<--
 -- Structures
@@ -90,6 +90,33 @@ local function isAvailable(cell)
 
 	return false
 end
+
+local function switchAppCull(node, bool)
+	if (node.appCulled ~= bool) then
+		node.appCulled = bool
+		node:update()
+	end
+end
+
+function interior.hideAll()
+	local vfxRoot = tes3.game.worldSceneGraphRoot.children[9]
+	for _, node in pairs(vfxRoot.children) do
+		if node and node.name == NAME_MAIN then
+			switchAppCull(node, true)
+		end
+	end
+end
+
+function interior.unhideAll()
+	local vfxRoot = tes3.game.worldSceneGraphRoot.children[9]
+	for _, node in pairs(vfxRoot.children) do
+		if node and node.name == NAME_MAIN then
+			-- local emitter = node:getObjectByName(NAME_EMITTER)
+			switchAppCull(node, false)
+		end
+	end
+end
+
 
 local function isCellFogged(cell)
 	return table.find(tracker, cell)

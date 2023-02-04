@@ -43,6 +43,8 @@ local services = {
 		init = function()
 			local interior = require("tew.Vapourmist.services.interior")
 			event.register(tes3.event.cellChanged, interior.onCellChanged, {priority = 500})
+			event.register("VAPOURMIST:enteredUnderwater", interior.hideAll)
+			event.register("VAPOURMIST:exitedUnderwater", interior.unhideAll)
 		end
 	}
 }
@@ -63,3 +65,24 @@ local function interiorCheck(e)
 end
 
 event.register(tes3.event.cellChanged, interiorCheck)
+
+local underwaterPrev
+---@param e simulateEventData
+local function underWaterCheck(e)
+	local mp = tes3.mobilePlayer
+	if mp then
+		if mp.isSwimming and not underwaterPrev then
+			underwaterPrev = true
+			event.trigger("VAPOURMIST:enteredUnderwater")
+			return
+		end
+
+		if not mp.isSwimming and underwaterPrev then
+			underwaterPrev = false
+			event.trigger("VAPOURMIST:exitedUnderwater")
+		end
+	end
+end
+event.register(tes3.event.simulate, underWaterCheck)
+
+
