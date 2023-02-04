@@ -160,7 +160,7 @@ end
 
 local function switchAppCull(node, bool)
 	local emitter = node:getObjectByName(NAME_EMITTER)
-	if (emitter ~= bool) then
+	if (emitter.appCulled ~= bool) then
 		emitter.appCulled = bool
 		emitter:update()
 	end
