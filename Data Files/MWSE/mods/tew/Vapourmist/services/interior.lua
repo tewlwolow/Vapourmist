@@ -154,7 +154,14 @@ local function getFogPosition(cell)
 		denom = denom + 1
 	end
 
-	return { x = pos.x / denom, y = pos.y / denom, z = pos.z / denom }
+	local calcZPos
+	if cell.hasWater then
+		calcZPos = cell.waterLevel - (HEIGHT * 3)
+	else
+		calcZPos = pos.z / denom
+	end
+
+	return { x = pos.x / denom, y = pos.y / denom, z = calcZPos }
 end
 
 ---@param val number
@@ -231,6 +238,16 @@ local function addFog(cell)
 		fogMesh:updateProperties()
 		fogMesh:updateEffects()
 
+		local calcZPos, calcZRad
+		local depth = math.random(BASE_DEPTH / 1.5, BASE_DEPTH * 1.5)
+		if cell.hasWater then
+			calcZRad = depth * 1.5
+			calcZPos = cell.waterLevel + calcZRad
+		else
+			calcZPos = pos.z + (HEIGHT/math.random(6,10))
+			calcZRad = depth
+		end
+
 		---
 		local fogParams = {
 			color = tes3vector3.new(
@@ -241,10 +258,10 @@ local function addFog(cell)
 			center = tes3vector3.new(
 				pos.x,
 				pos.y,
-				pos.z + HEIGHT/9
+				calcZPos
 			),
-			radius = tes3vector3.new(MAX_DISTANCE, MAX_DISTANCE, BASE_DEPTH),
-			density = DENSITY,
+			radius = tes3vector3.new(MAX_DISTANCE, MAX_DISTANCE, calcZRad),
+			density = math.random(DENSITY/2, DENSITY*1.5)
 		}
 
 		shader.createOrUpdateFog(NAME_MAIN, fogParams)
