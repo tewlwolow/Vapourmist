@@ -25,7 +25,7 @@ local MAX_BIRTHRATE = 1.8
 
 local CUTOFF_COEFF = 4
 
-local HEIGHTS = {1080, 1156, 1200, 1300}
+local HEIGHTS = {840, 940, 1080, 1156, 1200, 1300}
 local SIZES = {580, 650, 700, 800, 1100, 1200}
 
 local wetWeathers = {
