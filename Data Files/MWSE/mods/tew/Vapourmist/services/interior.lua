@@ -50,8 +50,21 @@ local interiorStatics = {
 	"t_glb_cave",
 	"t_mw_cave",
 	"t_sky_cave",
-	-- "bm_ic_",
-	-- "bm_ka"
+	"bm_ic_",
+	"bm_ka",
+	"in_dae",
+	"t_dae_dngruin",
+	"in_dwrv_",
+	"in_dwe_",
+	"t_dwe_dngruin",
+	"in_stronghold",
+	"in_strong",
+	"in_strongruin",
+	"dngruin",
+	"t_de_dngrtrongh",
+	"t_imp_dngsewers",
+	"in_om_",
+	"dngdirenni"
 }
 
 local interiorNames = {
