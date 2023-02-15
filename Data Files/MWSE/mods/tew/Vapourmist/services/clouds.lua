@@ -20,15 +20,15 @@ local MAX_LIFESPAN = 23
 local MIN_DEPTH = 2000
 local MAX_DEPTH = 4000
 
-local MIN_BIRTHRATE = 1.5
-local MAX_BIRTHRATE = 2
+local MIN_BIRTHRATE = 1.3
+local MAX_BIRTHRATE = 1.8
 
 local MIN_SPEED = 15
 
 local CUTOFF_COEFF = 4
 
 local HEIGHTS = {2900, 3600, 3800, 4200, 4800, 5200, 5760, 5900, 6000, 6100, 6200, 6800}
-local SIZES = {1340, 1500, 1620, 1740, 1917, 2100, 2450, 2500, 2600}
+local SIZES = {1340, 1500, 1620, 1740, 1917, 2100, 2250}
 
 local MESH = tes3.loadMesh("tew\\Vapourmist\\vapourcloud.nif")
 local NAME_MAIN = "tew_Clouds"
