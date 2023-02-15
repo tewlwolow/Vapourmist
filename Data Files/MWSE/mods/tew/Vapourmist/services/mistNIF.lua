@@ -25,7 +25,7 @@ local MAX_BIRTHRATE = 1.8
 
 local CUTOFF_COEFF = 4
 
-local HEIGHTS = {840, 940, 1080, 1156, 1200, 1300}
+local HEIGHTS = {1156, 1200, 1260, 1300}
 local SIZES = {580, 650, 700, 800, 1100, 1200}
 
 local wetWeathers = {
@@ -179,6 +179,25 @@ local function switchAppCull(node, bool)
 	if (emitter.appCulled ~= bool) then
 		emitter.appCulled = bool
 		emitter:update()
+	end
+end
+
+function mistNIF.hideAll()
+	local vfxRoot = tes3.game.worldSceneGraphRoot.children[9]
+	for _, node in pairs(vfxRoot.children) do
+		if node and node.name == NAME_MAIN then
+			switchAppCull(node, true)
+		end
+	end
+end
+
+function mistNIF.unhideAll()
+	local vfxRoot = tes3.game.worldSceneGraphRoot.children[9]
+	for _, node in pairs(vfxRoot.children) do
+		if node and node.name == NAME_MAIN then
+			-- local emitter = node:getObjectByName(NAME_EMITTER)
+			switchAppCull(node, false)
+		end
 	end
 end
 

@@ -37,6 +37,8 @@ local services = {
 			event.register(tes3.event.weatherTransitionStarted, mistNIF.onWeatherChanged)
 			event.register(tes3.event.weatherTransitionFinished, mistNIF.conditionCheck)
 			event.register(tes3.event.uiActivated, mistNIF.onWaitMenu, { filter = "MenuTimePass"})
+			event.register("VAPOURMIST:enteredUnderwater", mistNIF.hideAll)
+			event.register("VAPOURMIST:exitedUnderwater", mistNIF.unhideAll)
 		end
 	},
 	interior = {
