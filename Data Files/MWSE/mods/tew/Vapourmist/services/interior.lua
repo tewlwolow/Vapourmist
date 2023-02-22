@@ -32,6 +32,7 @@ local NAME_EMITTER = "tew_InteriorFog_Emitter"
 -- Structures
 
 local interiorStatics = {
+	"in_bm_cave",
 	"in_moldcave",
 	"in_mudcave",
 	"in_lavacave",
