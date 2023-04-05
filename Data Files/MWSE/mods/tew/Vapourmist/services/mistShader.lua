@@ -1,25 +1,23 @@
+-- Imports
 local shader = require("tew.Vapourmist.components.shader")
 local util = require("tew.Vapourmist.components.util")
 local debugLog = util.debugLog
 local config = require("tew.Vapourmist.config")
 
+-- Constants
 local FOG_ID = "tew_mist"
-
 local MAX_DISTANCE = 8192 * 3
 local BASE_DEPTH = 8192 / 10
+local TIMER_DURATION = 0.3
+local FADE_DURATION = 0.02
+local STEPS = 100
 
 local WtC = tes3.worldController.weatherController
 local WorldC = tes3.worldController
-
-local TIMER_DURATION = 0.3
-
-local FADE_DURATION = 0.02
-local STEPS = 100
 local mistDensity = 0
-
 local mistDeployed = false
 
-local toWeather, postRainMist, lastRegion
+local toWeather, postRainMist, lastRegion, fogTimer, fadeInTimer, fadeOutTimer, fadeOutRemoveTimer
 
 local wetWeathers = {
     ["Rain"] = true,
@@ -53,8 +51,6 @@ local densities = {
 }
 
 local mistShader = {}
-
-local FOG_TIMER, FADE_IN_TIMER, FADE_OUT_TIMER, FADE_OUT_REMOVE_TIMER
 
 local fogParams = {
     color = tes3vector3.new(),
@@ -153,7 +149,7 @@ local function updateMist()
 end
 
 function mistShader.onLoaded()
-    FOG_TIMER = timer.start{
+    fogTimer = timer.start{
         iterations = -1,
         duration = 0.01,
         callback = updateMist,
@@ -172,9 +168,9 @@ function mistShader.onLoaded()
 end
 
 function mistShader.removeMist()
-    stopTimer(FADE_OUT_TIMER)
-    stopTimer(FADE_OUT_REMOVE_TIMER)
-    stopTimer(FADE_IN_TIMER)
+    stopTimer(fadeOutTimer)
+    stopTimer(fadeOutRemoveTimer)
+    stopTimer(fadeInTimer)
     mistDensity = 0
     shader.deleteFog(FOG_ID)
     debugLog("Mist shader removed.")
@@ -258,7 +254,7 @@ function mistShader.conditionCheck()
     debugLog("Starting condition check.")
     local cell = tes3.getPlayerCell()
     if not cell.isOrBehavesAsExterior then
-        FOG_TIMER:pause()
+        fogTimer:pause()
         shader.deleteFog(FOG_ID)
     end
 
@@ -271,10 +267,10 @@ function mistShader.conditionCheck()
         if not mistDeployed then
             debugLog("Mist available.")
             updateMist()
-            FOG_TIMER:resume()
-            stopTimer(FADE_OUT_TIMER)
-            stopTimer(FADE_OUT_REMOVE_TIMER)
-            FADE_IN_TIMER = timer.start{
+            fogTimer:resume()
+            stopTimer(fadeOutTimer)
+            stopTimer(fadeOutRemoveTimer)
+            fadeInTimer = timer.start{
                 duration = FADE_DURATION,
                 callback = fadeIn,
                 iterations = STEPS,
@@ -286,16 +282,16 @@ function mistShader.conditionCheck()
     else
         if mistDeployed then
             debugLog("Mist not available.")
-            stopTimer(FADE_IN_TIMER)
-            FADE_OUT_TIMER = timer.start{
+            stopTimer(fadeInTimer)
+            fadeOutTimer = timer.start{
                 duration = FADE_DURATION,
                 callback = fadeOut,
                 iterations = STEPS,
                 type = timer.game,
                 persist = false
             }
-            FADE_OUT_REMOVE_TIMER = timer.start{
-                duration = (FADE_DURATION*STEPS) + FADE_DURATION,
+            fadeOutRemoveTimer = timer.start{
+                duration = (FADE_DURATION * STEPS) + FADE_DURATION,
                 callback = mistShader.removeMist,
                 iterations = 1,
                 type = timer.game,
