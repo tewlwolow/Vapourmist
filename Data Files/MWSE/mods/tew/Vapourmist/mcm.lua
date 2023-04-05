@@ -1,7 +1,6 @@
 local configPath = "Vapourmist"
 local config = require("tew.Vapourmist.config")
-local version = require("tew.Vapourmist.version")
-local VERSION = version.version
+local metadata = toml.loadMetadata("Vapourmist")
 
 local function registerVariable(id)
     return mwse.mcm.createTableVariable {
@@ -11,12 +10,12 @@ local function registerVariable(id)
 end
 
 local template = mwse.mcm.createTemplate {
-    name = "Vapourmist",
+    name = metadata.package.name,
     headerImagePath = "\\Textures\\tew\\Vapourmist\\logo.dds" }
 
 local mainPage = template:createPage { label = "Main Settings", noScroll = true }
 mainPage:createCategory {
-    label = "Vapourmist " .. VERSION .. " by tewlwolow.\nLua-based 3D mist and clouds.\nYou need to wait or change cells for these settings to be applied.\nSettings:\n",
+    label = metadata.package.name .. " " .. metadata.package.version .. " by tewlwolow.\n" .. metadata.package.description .."\nYou need to wait or change cells for these settings to be applied.\n\nSettings:"
 }
 
 mainPage:createYesNoButton {

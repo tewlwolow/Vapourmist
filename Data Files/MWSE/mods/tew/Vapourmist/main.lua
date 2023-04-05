@@ -2,11 +2,15 @@
 -- Main module
 -->>>---------------------------------------------------------------------------------------------<<<--
 
-local version = require("tew.Vapourmist.version")
-local VERSION = version.version
+local util = require("tew.Vapourmist.components.util")
+local metadata = toml.loadMetadata("Vapourmist")
+
 
 local function init()
-    mwse.log("[Vapourmist] Version " .. VERSION .. " initialised.")
+    if not (metadata) then
+		util.metadataMissing()
+	end
+    mwse.log("[" .. metadata.package.name .."] Version " .. metadata.package.version .. " initialised.")
     dofile("Data Files\\MWSE\\mods\\tew\\Vapourmist\\components\\events.lua")
 end
 

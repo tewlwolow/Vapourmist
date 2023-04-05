@@ -1,0 +1,24 @@
+[package]
+name = "Vapourmist"
+description = "Lua-based 3D mist and clouds mod for Morrowind."
+homepage = "https://www.nexusmods.com/morrowind/mods/50517"
+repository = "https://github.com/tewlwolow/Vapourmist"
+authors = ["tewlwolow"]
+version = "4.1.0"
+
+[tools.mwse]
+lua-mod = "tew.Vapourmist"
+wait-until-initialize = false
+
+[dependencies]
+assets = [
+	"Meshes\\tew\\Vapourmist",
+	"Textures\\tew\\Vapourmist",
+	"Shaders\\XEShaders\\tew_fogbox.fx"
+]
+
+[dependencies.mwse]
+buildnumber = 3150
+
+[dependencies.mge-xe]
+version = ">=0.15.0"

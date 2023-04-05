@@ -4,8 +4,8 @@
 local util = {}
 
 local config = require("tew.Vapourmist.config")
-local modversion = require("tew.Vapourmist.version")
-local VERSION = modversion.version
+local metadata = toml.loadMetadata("Vapourmist")
+
 
 -- Print debug messages --
 function util.debugLog(message)
@@ -14,10 +14,18 @@ function util.debugLog(message)
 		message = tostring(message)
 		local info = debug.getinfo(2, "Sl")
 		local module = info.short_src:match("^.+\\(.+).lua$")
-		local prepend = ("[Vapourmist.%s.%s:%s]:"):format(VERSION, module, info.currentline)
+		local prepend = ("[%s.%s.%s:%s]:"):format(metadata.package.name, metadata.package.version, module, info.currentline)
 		local aligned = ("%-36s"):format(prepend)
 		mwse.log(aligned .. " -- " .. string.format("%s", message))
 	end
+end
+
+function util.metadataMissing()
+	local errorMessage = "Error! Vapourmist-metadata.toml file is missing. Please install."
+	tes3.messageBox{
+		message = errorMessage
+	}
+	error(errorMessage)
 end
 
 return util
