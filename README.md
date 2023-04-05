@@ -19,7 +19,7 @@ The source code and assets repository for a Morrowind MWSE-Lua based mod that ad
 ## :jigsaw: Contributing
 
 Please raise a pull request from your fork of the repo for me to review. Kindly use 4-spaced tabs.
-Refer to NexusMods page or source code comments for guidance. You can also write me a message.
+Refer to NexusMods page or source code comments for guidance. You can also message me.
 
 <!-- Archives -->
 ## :briefcase: Archives
