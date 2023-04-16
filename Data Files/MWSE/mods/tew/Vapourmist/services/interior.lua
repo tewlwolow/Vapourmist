@@ -181,7 +181,7 @@ end
 ---@param val number
 ---@param coeff string
 local function amplifyColour(val, coeff)
-	return math.clamp(math.lerp(BASE_COLOUR[coeff], val * 10, 0.4), 0.0, 1.0)
+	return math.clamp(math.lerp(BASE_COLOUR[coeff], val * 10, 0.4), 0.2, 0.9)
 end
 
 ---@param cell tes3cell
@@ -191,13 +191,13 @@ local function getAverageColour(cell)
 
 	for light in cell:iterateReferences(tes3.objectType.light) do
 		local object = light.object
-		colour.r = (object.color[1] or 126) / 255.0
-		colour.g = (object.color[2] or 126) / 255.0
-		colour.b = (object.color[3] or 126) / 255.0
+		colour.r = (object.color[1] or 126) / 255
+		colour.g = (object.color[2] or 126) / 255
+		colour.b = (object.color[3] or 126) / 255
 		denom = denom + 1
 	end
 
-	if not denom then
+	if denom == 0 then
 		return BASE_COLOUR
 	else
 		return { r = amplifyColour(colour.r / denom, 'r'), g = amplifyColour(colour.g / denom, 'g'), b = amplifyColour(colour.b / denom, 'b') }
