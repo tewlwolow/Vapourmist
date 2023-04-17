@@ -231,7 +231,7 @@ end
 function mistShader.immediateCheck()
     local region = tes3.getPlayerCell().region
 
-    if lastRegion ~= region then
+    if (lastRegion ~= region) or (not region) then
         debugLog("Player switched regions.")
         mistShader.removeMist()
         lastRegion = region
