@@ -28,6 +28,7 @@ return mwse.loadConfig (
             ["Blizzard"] = true,
             ["Rain"] = true,
             ["Thunderstorm"] = true
-        }
+        },
+        blockedInteriors = {}
     }
 )
