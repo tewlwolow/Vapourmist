@@ -4,7 +4,7 @@ description = "Lua-based 3D mist and clouds mod for Morrowind."
 homepage = "https://www.nexusmods.com/morrowind/mods/50517"
 repository = "https://github.com/tewlwolow/Vapourmist"
 authors = ["tewlwolow"]
-version = "4.1.1"
+version = "4.2.0"
 
 [tools.mwse]
 lua-mod = "tew.Vapourmist"
