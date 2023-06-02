@@ -4,6 +4,7 @@
 -- Imports
 local interior = {}
 local util = require("tew.Vapourmist.components.util")
+local config = require("tew.Vapourmist.config")
 local debugLog = util.debugLog
 local shader = require("tew.Vapourmist.components.shader")
 
@@ -84,6 +85,13 @@ local tracker = {}
 -- Functions
 
 local function isAvailable(cell)
+
+	if cell.name then
+		if config.blockedInteriors[cell.name] then
+			return false
+		end
+	end
+
 	for _, namePattern in ipairs(interiorNames) do
 		if string.find(cell.name:lower(), namePattern) then
 			return true
