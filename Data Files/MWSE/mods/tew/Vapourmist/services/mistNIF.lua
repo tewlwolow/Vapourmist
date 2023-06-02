@@ -430,6 +430,7 @@ end
 
 function mistNIF.conditionCheck()
 	local cell = tes3.getPlayerCell()
+	if not cell then return end
 	if not cell.isOrBehavesAsExterior then return end
 	local gameHour = WorldC.hour.value
 
@@ -471,6 +472,7 @@ end
 
 -- Register events, timers and reset values --
 function mistNIF.onLoaded()
+	if not tes3.player then return end
 	debugLog("Game loaded.")
 	if not recolourRegistered then
 		event.register(tes3.event.enterFrame, reColour)

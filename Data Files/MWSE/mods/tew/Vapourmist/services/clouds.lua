@@ -438,6 +438,7 @@ end
 
 -- Register events, timers and reset values --
 function clouds.onLoaded()
+	if not tes3.player then return end
 	debugLog("Game loaded.")
 	if not recolourRegistered then
 		event.register(tes3.event.enterFrame, reColour)

@@ -140,7 +140,7 @@ local function updateTracker(fogMesh, cell)
 	tracker[fogMesh] = cell
 end
 
-local function removeAllFog()
+function interior.removeAllFog()
 	if not tracker or table.empty(tracker) then return end
 
 	local vfxRoot = tes3.game.worldSceneGraphRoot.children[9]
@@ -282,9 +282,11 @@ local function addFog(cell)
 	end
 end
 
-function interior.onCellChanged(e)
-	local cell = e.cell
-	removeAllFog()
+function interior.onCellChanged()
+	local player = tes3.player
+	if not player then return end
+	local cell = player.cell
+	interior.removeAllFog()
 	if not (cell.isOrBehavesAsExterior) then
 		debugLog("Starting interior check.")
 

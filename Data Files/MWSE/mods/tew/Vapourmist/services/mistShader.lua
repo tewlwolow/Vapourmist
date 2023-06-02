@@ -129,7 +129,9 @@ local function fadeOut()
 end
 
 local function updateMist()
-    if tes3.player.cell.isInterior then
+    local player = tes3.player
+    if not player then return end
+    if player.cell.isInterior then
         return
     end
 
@@ -149,6 +151,8 @@ local function updateMist()
 end
 
 function mistShader.onLoaded()
+    if not tes3.player then return end
+
     fogTimer = timer.start{
         iterations = -1,
         duration = 0.01,
@@ -253,6 +257,7 @@ end
 function mistShader.conditionCheck()
     debugLog("Starting condition check.")
     local cell = tes3.getPlayerCell()
+    if not cell then return end
     if not cell.isOrBehavesAsExterior then
         fogTimer:pause()
         shader.deleteFog(FOG_ID)

@@ -18,6 +18,12 @@ mainPage:createCategory {
     label = metadata.package.name .. " " .. metadata.package.version .. " by tewlwolow.\n" .. metadata.package.description .."\nYou need to wait or change cells for these settings to be applied.\n\nSettings:"
 }
 
+mainPage:createOnOffButton{
+    label = "Enable Vapourmist?",
+    description = "Enable Vapourmist?\n\nDefault: On\n\n",
+    variable = registerVariable("modEnabled")
+}
+
 mainPage:createYesNoButton {
     label = "Enable debug mode?",
     variable = registerVariable("debugLogOn"),
@@ -195,5 +201,9 @@ blockedPage:createExclusionsPage {
     }
 }
 
-template:saveOnClose(configPath, config)
+
+template.onClose = function()
+    mwse.saveConfig(configPath, config)
+    dofile("Data Files\\MWSE\\mods\\tew\\Vapourmist\\components\\events.lua")
+end
 mwse.mcm.register(template)
