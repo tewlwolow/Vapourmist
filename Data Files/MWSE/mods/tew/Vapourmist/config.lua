@@ -7,7 +7,8 @@ return mwse.loadConfig (
         clouds = true,
         mistShader = true,
         mistNIF = true,
-        interior = true,
+        interiorShader = true,
+        interiorNIF = true,
         cloudyWeathers = {
             ["Cloudy"] = true,
             ["Rain"] = true,

@@ -15,7 +15,7 @@ local template = mwse.mcm.createTemplate {
 
 local mainPage = template:createPage { label = "Main Settings", noScroll = true }
 mainPage:createCategory {
-    label = metadata.package.name .. " " .. metadata.package.version .. " by tewlwolow.\n" .. metadata.package.description .."\nYou need to wait or change cells for these settings to be applied.\n\nSettings:"
+    label = metadata.package.name .. " " .. metadata.package.version .. " by tewlwolow.\n" .. metadata.package.description .."\n\nSettings:"
 }
 
 mainPage:createOnOffButton{
@@ -34,16 +34,20 @@ mainPage:createYesNoButton {
     variable = registerVariable("clouds"),
 }
 mainPage:createYesNoButton {
-    label = "Enable shader-based mist (compatible with NIF-based mist)?",
+    label = "Enable shader-based mist?",
     variable = registerVariable("mistShader"),
 }
 mainPage:createYesNoButton {
-    label = "Enable NIF-based mist (compatible with shader-based mist)?",
+    label = "Enable NIF-based mist?",
     variable = registerVariable("mistNIF"),
 }
 mainPage:createYesNoButton {
-    label = "Enable interior fog?",
-    variable = registerVariable("interior"),
+    label = "Enable shader-based mist in interiors?",
+    variable = registerVariable("interiorShader"),
+}
+mainPage:createYesNoButton {
+    label = "Enable NIF-based mist in interiors?",
+    variable = registerVariable("interiorNIF"),
 }
 
 mainPage:createSlider {

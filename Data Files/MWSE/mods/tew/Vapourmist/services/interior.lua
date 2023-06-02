@@ -158,10 +158,9 @@ function interior.removeAllFog()
 		end
 	end
 
-	---
-    shader.deleteFog(NAME_MAIN)
-
 	tracker = {}
+
+	shader.deleteFog(NAME_MAIN)
 end
 
 -- Determine fog position for interiors --
@@ -221,72 +220,75 @@ local function addFog(cell)
 
 	if not isCellFogged(cell) then
 		debugLog("Interior cell is not fogged.")
-		local fogMesh = MESH:clone()
+		local interiorFogColor = getAverageColour(cell)
 		local pos = getFogPosition(cell)
 
-		fogMesh:clearTransforms()
-		fogMesh.translation = tes3vector3.new(
-			pos.x,
-			pos.y,
-			pos.z + HEIGHT
-		)
+		if config.interiorNIF then
+			local fogMesh = MESH:clone()
+			fogMesh:clearTransforms()
+			fogMesh.translation = tes3vector3.new(
+				pos.x,
+				pos.y,
+				pos.z + HEIGHT
+			)
 
-		local interiorFogColor = getAverageColour(cell)
+			local particleSystem = fogMesh:getObjectByName(NAME_PARTICLE_SYSTEM)
+			local controller = particleSystem.controller
 
-		local particleSystem = fogMesh:getObjectByName(NAME_PARTICLE_SYSTEM)
-		local controller = particleSystem.controller
+			controller.initialSize = table.choice(SIZES)
 
-		controller.initialSize = table.choice(SIZES)
+			local colorModifier = controller.particleModifiers
+			for _, key in pairs(colorModifier.colorData.keys) do
+				key.color.r = interiorFogColor.r
+				key.color.g = interiorFogColor.g
+				key.color.b = interiorFogColor.b
+			end
 
-		local colorModifier = controller.particleModifiers
-		for _, key in pairs(colorModifier.colorData.keys) do
-			key.color.r = interiorFogColor.r
-			key.color.g = interiorFogColor.g
-			key.color.b = interiorFogColor.b
-		end
+			local materialProperty = particleSystem.materialProperty
+			materialProperty.emissive = interiorFogColor
+			materialProperty.specular = interiorFogColor
+			materialProperty.diffuse = interiorFogColor
+			materialProperty.ambient = interiorFogColor
 
-		local materialProperty = particleSystem.materialProperty
-		materialProperty.emissive = interiorFogColor
-		materialProperty.specular = interiorFogColor
-		materialProperty.diffuse = interiorFogColor
-		materialProperty.ambient = interiorFogColor
+			particleSystem:updateEffects()
+			updateTracker(fogMesh, cell)
 
-		particleSystem:updateEffects()
-		updateTracker(fogMesh, cell)
+			vfxRoot:attachChild(fogMesh, true)
 
-		vfxRoot:attachChild(fogMesh, true)
-
-		fogMesh:update()
-		fogMesh:updateProperties()
-		fogMesh:updateEffects()
-
-		local calcZPos, calcZRad
-		local depth = math.random(BASE_DEPTH / 1.5, BASE_DEPTH * 1.5)
-		if cell.hasWater then
-			calcZRad = depth * 1.5
-			calcZPos = cell.waterLevel + calcZRad
-		else
-			calcZPos = pos.z + (HEIGHT/math.random(6,10))
-			calcZRad = depth
+			fogMesh:update()
+			fogMesh:updateProperties()
+			fogMesh:updateEffects()
 		end
 
 		---
-		local fogParams = {
-			color = tes3vector3.new(
-				interiorFogColor.r,
-				interiorFogColor.g,
-				interiorFogColor.b
-			),
-			center = tes3vector3.new(
-				pos.x,
-				pos.y,
-				calcZPos
-			),
-			radius = tes3vector3.new(MAX_DISTANCE, MAX_DISTANCE, calcZRad),
-			density = math.random(DENSITY/2, DENSITY*1.5)
-		}
+		if config.interiorShader then
+			local calcZPos, calcZRad
+			local depth = math.random(BASE_DEPTH / 1.5, BASE_DEPTH * 1.5)
+			if cell.hasWater then
+				calcZRad = depth * 1.5
+				calcZPos = cell.waterLevel + calcZRad
+			else
+				calcZPos = pos.z + (HEIGHT/math.random(6,10))
+				calcZRad = depth
+			end
 
-		shader.createOrUpdateFog(NAME_MAIN, fogParams)
+			local fogParams = {
+				color = tes3vector3.new(
+					interiorFogColor.r,
+					interiorFogColor.g,
+					interiorFogColor.b
+				),
+				center = tes3vector3.new(
+					pos.x,
+					pos.y,
+					calcZPos
+				),
+				radius = tes3vector3.new(MAX_DISTANCE, MAX_DISTANCE, calcZRad),
+				density = math.random(DENSITY/2, DENSITY*1.5)
+			}
+
+			shader.createOrUpdateFog(NAME_MAIN, fogParams)
+		end
 	end
 end
 
