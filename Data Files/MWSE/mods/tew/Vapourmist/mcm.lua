@@ -86,6 +86,7 @@ weathersPage:createExclusionsPage {
                             table.insert(weatherNames, weather:sub(1, 1):upper() .. weather:sub(2))
                         end
                     end
+                    table.sort(weatherNames)
                     return weatherNames
                 end
             )
@@ -120,6 +121,7 @@ weathersPage:createExclusionsPage {
                             table.insert(weatherNames, weather:sub(1, 1):upper() .. weather:sub(2))
                         end
                     end
+                    table.sort(weatherNames)
                     return weatherNames
                 end
                 )
@@ -159,9 +161,10 @@ blockedPage:createExclusionsPage {
                             table.insert(weatherNames, weather:sub(1, 1):upper() .. weather:sub(2))
                         end
                     end
+                    table.sort(weatherNames)
                     return weatherNames
                 end
-                )
+            )
         },
 
     }
@@ -193,9 +196,49 @@ blockedPage:createExclusionsPage {
                             table.insert(weatherNames, weather:sub(1, 1):upper() .. weather:sub(2))
                         end
                     end
+                    table.sort(weatherNames)
                     return weatherNames
                 end
-                )
+            )
+        },
+
+    }
+}
+
+local blacklistPage = template:createPage { label = "Interior cell blacklist", noScroll = true }
+blacklistPage:createCategory {
+    label = "Controls interior cells that are explicitly blacklisted based on name.\n",
+}
+
+blacklistPage:createExclusionsPage {
+    label = "Interiors",
+    description = "Blacklist:",
+    toggleText = "Toggle",
+    leftListLabel = "Blacklisted interiors",
+    rightListLabel = "All interiors",
+    showAllBlocked = false,
+    variable = mwse.mcm.createTableVariable {
+        id = "blockedInteriors",
+        table = config,
+    },
+
+    filters = {
+
+        {
+            label = "Interiors",
+            callback = (
+                function()
+                    local interiors = {}
+                    for cell in tes3.iterate(tes3.dataHandler.nonDynamicData.cells) do
+						if not cell.isOrBehavesAsExterior then
+                            table.insert(interiors, cell.name)
+                        end
+                    end
+
+                    table.sort(interiors)
+                    return interiors
+                end
+            )
         },
 
     }
