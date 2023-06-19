@@ -140,6 +140,6 @@ float4 draw(float2 tex : TEXCOORD, float2 vpos : VPOS) : COLOR0 {
     return float4(color, 1.0);
 }
 
-technique T0<string MGEinterface = "MGE XE 0"; string category = "scene";> {
+technique T0<string MGEinterface = "MGE XE 0"; string category = "atmosphere";> {
     pass { PixelShader = compile ps_3_0 draw(); }
 }
