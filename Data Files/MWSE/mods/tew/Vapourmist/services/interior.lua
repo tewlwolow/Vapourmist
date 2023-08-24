@@ -18,7 +18,7 @@ local SIZES = { 150, 170, 185, 190 }
 
 local MAX_DISTANCE = 8192 * 3
 local BASE_DEPTH = 8192 / 32
-local DENSITY = 5
+local DENSITY = 4
 local BASE_COLOUR = {
 	r = 0.278,
 	g = 0.192,
@@ -284,7 +284,7 @@ local function addFog(cell)
 					calcZPos
 				),
 				radius = tes3vector3.new(MAX_DISTANCE, MAX_DISTANCE, calcZRad),
-				density = math.random(DENSITY/2, DENSITY*1.5)
+				density = math.random(DENSITY/3, DENSITY*1.3)
 			}
 
 			shader.createOrUpdateFog(NAME_MAIN, fogParams)
