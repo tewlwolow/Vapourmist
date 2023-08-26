@@ -132,6 +132,7 @@ function interior.hideAll()
 			switchAppCull(node, true)
 		end
 	end
+	shader.disableFog()
 end
 
 function interior.unhideAll()
@@ -142,6 +143,7 @@ function interior.unhideAll()
 			switchAppCull(node, false)
 		end
 	end
+	shader.enableFog()
 end
 
 

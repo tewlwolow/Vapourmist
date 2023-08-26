@@ -124,5 +124,12 @@ function this.deleteFog(id)
     end
 end
 
+function this.disableFog()
+    shader.enabled = false
+end
+
+function this.enableFog()
+    shader.enabled = true
+end
 
 return this
