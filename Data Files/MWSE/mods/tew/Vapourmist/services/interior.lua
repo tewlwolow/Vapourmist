@@ -13,21 +13,26 @@ local shader = require("tew.Vapourmist.components.shader")
 
 local MIN_STAT_COUNT = 5
 local MESH = tes3.loadMesh("tew\\Vapourmist\\vapourint.nif")
-local HEIGHT = -1300
-local SIZES = { 150, 170, 185, 190 }
+local HEIGHTS = { -1750, -1300, -1200, -960, -560 }
+local SIZES = { 150, 170, 185, 190, 250, 280, 300 }
 
 local MAX_DISTANCE = 8192 * 3
 local BASE_DEPTH = 8192 / 32
 local DENSITY = 4
 local BASE_COLOUR = {
-	r = 0.278,
-	g = 0.192,
-	b = 0.062
+	r = 0.3,
+	g = 0.2,
+	b = 0.08
 }
 
 local NAME_MAIN = "tew_InteriorFog"
-local NAME_PARTICLE_SYSTEM = "tew_InteriorFog_ParticleSystem"
 local NAME_EMITTER = "tew_InteriorFog_Emitter"
+local NAME_PARTICLE_SYSTEMS = {
+	"tew_InteriorFog_ParticleSystem_1",
+	"tew_InteriorFog_ParticleSystem_2",
+	"tew_InteriorFog_ParticleSystem_3"
+}
+
 
 -->>>---------------------------------------------------------------------------------------------<<<--
 -- Structures
@@ -167,19 +172,21 @@ end
 local function getFogPosition(cell)
 	local pos = { x = 0, y = 0, z = 0 }
 	local denom = 0
+	local zs = {}
 
 	for stat in cell:iterateReferences() do
 		pos.x = pos.x + stat.position.x
 		pos.y = pos.y + stat.position.y
 		pos.z = pos.z + stat.position.z
+		table.insert(zs, stat.position.z)
 		denom = denom + 1
 	end
 
 	local calcZPos
 	if cell.hasWater then
-		calcZPos = cell.waterLevel - (HEIGHT * 3)
+		calcZPos = cell.waterLevel - (table.choice(HEIGHTS) * math.random(1,3))
 	else
-		calcZPos = pos.z / denom
+		calcZPos = math.lerp((pos.z / denom), math.min(table.unpack(zs)), 0.05)
 	end
 
 	return { x = pos.x / denom, y = pos.y / denom, z = calcZPos }
@@ -188,7 +195,7 @@ end
 ---@param val number
 ---@param coeff string
 local function amplifyColour(val, coeff)
-	return math.clamp(math.lerp(BASE_COLOUR[coeff], val * 10, 0.4), 0.2, 0.9)
+	return math.clamp(math.lerp(BASE_COLOUR[coeff], val, 0.8), 0.2, 0.8)
 end
 
 ---@param cell tes3cell
@@ -196,18 +203,43 @@ local function getAverageColour(cell)
 	local colour = {r = 0, g = 0, b = 0}
 	local denom = 0
 
+	local ambient = {
+		r = math.lerp(cell.ambientColor.r > 0 and cell.ambientColor.r/100 or BASE_COLOUR.r, cell.fogColor.r > 0 and cell.fogColor.r/100 or BASE_COLOUR.r, 0.5),
+		g =  math.lerp(cell.ambientColor.g > 0 and cell.ambientColor.g/100 or BASE_COLOUR.g, cell.fogColor.g > 0 and cell.fogColor.g/100 or BASE_COLOUR.g, 0.5),
+		b = math.lerp(cell.ambientColor.b > 0 and cell.ambientColor.b/100 or BASE_COLOUR.b, cell.fogColor.b > 0 and cell.fogColor.b/100 or BASE_COLOUR.b, 0.5),
+	}
+
 	for light in cell:iterateReferences(tes3.objectType.light) do
 		local object = light.object
-		colour.r = (object.color[1] or 126) / 255
-		colour.g = (object.color[2] or 126) / 255
-		colour.b = (object.color[3] or 126) / 255
+		if (
+			object.color[1] < 0 or
+			object.color[2] < 0 or
+			object.color[2] < 0
+		) then return end
+		colour.r = (colour.r + (object.color[1] > 0 and object.color[1] or 55) / 255)
+		colour.g = (colour.g + (object.color[2] > 0 and object.color[2] or 55) / 255)
+		colour.b = (colour.b + (object.color[3] > 0 and object.color[3] or 55) / 255)
 		denom = denom + 1
 	end
+
+	debug.log(colour.r)
+	debug.log(colour.g)
+	debug.log(colour.b)
+	debug.log(denom)
+	debug.log(ambient.r)
+	debug.log(ambient.g)
+	debug.log(ambient.b)
+	colour.r = math.lerp(colour.r/denom, ambient.r, 0.9)
+	colour.g = math.lerp(colour.g/denom, ambient.g, 0.9)
+	colour.b = math.lerp(colour.b/denom, ambient.b, 0.9)
+	debug.log(colour.r)
+	debug.log(colour.g)
+	debug.log(colour.b)
 
 	if denom == 0 then
 		return BASE_COLOUR
 	else
-		return { r = amplifyColour(colour.r / denom, 'r'), g = amplifyColour(colour.g / denom, 'g'), b = amplifyColour(colour.b / denom, 'b') }
+		return { r = amplifyColour(colour.r, 'r'), g = amplifyColour(colour.g, 'g'), b = amplifyColour(colour.b, 'b') }
 	end
 end
 
@@ -229,32 +261,39 @@ local function addFog(cell)
 			fogMesh.translation = tes3vector3.new(
 				pos.x,
 				pos.y,
-				pos.z + HEIGHT
+				pos.z + table.choice(HEIGHTS) * math.random(1, 2)
 			)
-
-			local particleSystem = fogMesh:getObjectByName(NAME_PARTICLE_SYSTEM)
-			local controller = particleSystem.controller
-
-			controller.initialSize = table.choice(SIZES)
-
-			local colorModifier = controller.particleModifiers
-			for _, key in pairs(colorModifier.colorData.keys) do
-				key.color.r = interiorFogColor.r
-				key.color.g = interiorFogColor.g
-				key.color.b = interiorFogColor.b
-			end
-
-			local materialProperty = particleSystem.materialProperty
-			materialProperty.emissive = interiorFogColor
-			materialProperty.specular = interiorFogColor
-			materialProperty.diffuse = interiorFogColor
-			materialProperty.ambient = interiorFogColor
-
-			particleSystem:updateEffects()
-			updateTracker(fogMesh, cell)
 
 			vfxRoot:attachChild(fogMesh, true)
 
+			for _, name in ipairs(NAME_PARTICLE_SYSTEMS) do
+				local particleSystem = fogMesh:getObjectByName(name)
+
+				local controller = particleSystem.controller
+				local colorModifier = controller.particleModifiers
+
+				controller.initialSize = table.choice(SIZES)
+
+				for _, key in pairs(colorModifier.colorData.keys) do
+					key.color.r = interiorFogColor.r
+					key.color.g = interiorFogColor.g
+					key.color.b = interiorFogColor.b
+				end
+
+				local materialProperty = particleSystem.materialProperty
+				materialProperty.emissive = interiorFogColor
+				materialProperty.specular = interiorFogColor
+				materialProperty.diffuse = interiorFogColor
+				materialProperty.ambient = interiorFogColor
+
+				particleSystem:update()
+				particleSystem:updateProperties()
+				particleSystem:updateEffects()
+			end
+
+			updateTracker(fogMesh, cell)
+
+			fogMesh.appCulled = false
 			fogMesh:update()
 			fogMesh:updateProperties()
 			fogMesh:updateEffects()
@@ -263,12 +302,11 @@ local function addFog(cell)
 		---
 		if config.interiorShader then
 			local calcZPos, calcZRad
-			local depth = math.random(BASE_DEPTH / 1.5, BASE_DEPTH * 1.5)
+			local depth = math.random(BASE_DEPTH / 1.2, BASE_DEPTH * 2)
+			calcZPos = pos.z + table.choice(HEIGHTS) * math.random(1, 2)
 			if cell.hasWater then
 				calcZRad = depth * 1.5
-				calcZPos = cell.waterLevel + calcZRad
 			else
-				calcZPos = pos.z + (HEIGHT/math.random(6,10))
 				calcZRad = depth
 			end
 
