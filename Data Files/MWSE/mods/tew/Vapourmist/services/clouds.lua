@@ -28,7 +28,7 @@ local MIN_SPEED = 15
 local CUTOFF_COEFF = 4
 
 local HEIGHTS = {2900, 3600, 3800, 4200, 4800, 5200, 5760, 5900, 6000, 6100, 6200, 6800}
-local SIZES = {860, 1200, 1620, 1740, 1917, 2250, 2800, 3156, 3400, 3700, 4300, 4400, 4500}
+local SIZES = {860, 1200, 1620, 1740, 1917, 2250, 2800, 3156, 3400, 3700}
 
 local MESH = tes3.loadMesh("tew\\Vapourmist\\vapourcloud.nif")
 local NAME_MAIN = "tew_Clouds"
