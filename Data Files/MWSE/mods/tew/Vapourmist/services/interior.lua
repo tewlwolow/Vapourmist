@@ -308,7 +308,9 @@ local function addFog(cell)
 			calcZPos = pos.z + table.choice(HEIGHTS) * math.random(1, 2)
 			if cell.hasWater then
 				calcZRad = depth * 1.5
+				calcZPos = cell.waterLevel + calcZRad
 			else
+				calcZPos = pos.z + (table.choice(HEIGHTS) / math.random(6,10))
 				calcZRad = depth
 			end
 
