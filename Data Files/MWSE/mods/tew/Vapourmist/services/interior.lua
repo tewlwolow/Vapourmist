@@ -224,19 +224,9 @@ local function getAverageColour(cell)
 		denom = denom + 1
 	end
 
-	debug.log(colour.r)
-	debug.log(colour.g)
-	debug.log(colour.b)
-	debug.log(denom)
-	debug.log(ambient.r)
-	debug.log(ambient.g)
-	debug.log(ambient.b)
 	colour.r = math.lerp(colour.r/denom, ambient.r, 0.9)
 	colour.g = math.lerp(colour.g/denom, ambient.g, 0.9)
 	colour.b = math.lerp(colour.b/denom, ambient.b, 0.9)
-	debug.log(colour.r)
-	debug.log(colour.g)
-	debug.log(colour.b)
 
 	if denom == 0 then
 		return BASE_COLOUR
