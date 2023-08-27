@@ -171,15 +171,17 @@ function interior.removeAllFog()
 end
 
 -- Determine fog position for interiors --
-local function getFogPosition(cell)
+local function getFogLocation(cell)
 	local pos = { x = 0, y = 0, z = 0 }
 	local denom = 0
-	local zs = {}
+	local xs, ys, zs = {}, {}, {}
 
 	for stat in cell:iterateReferences() do
 		pos.x = pos.x + stat.position.x
 		pos.y = pos.y + stat.position.y
 		pos.z = pos.z + stat.position.z
+		table.insert(xs, stat.position.x)
+		table.insert(ys, stat.position.y)
 		table.insert(zs, stat.position.z)
 		denom = denom + 1
 	end
@@ -191,7 +193,13 @@ local function getFogPosition(cell)
 		calcZPos = math.lerp((pos.z / denom), math.min(table.unpack(zs)), 0.05)
 	end
 
-	return { x = pos.x / denom, y = pos.y / denom, z = calcZPos }
+	return
+		{ x = pos.x / denom, y = pos.y / denom, z = calcZPos },
+		{
+			width = math.abs(math.max(table.unpack(xs)) - math.min(table.unpack(xs))),
+			height = math.abs(math.max(table.unpack(ys)) - math.min(table.unpack(ys))),
+			depth =  math.abs(math.max(table.unpack(zs)) - math.min(table.unpack(zs))),
+		}
 end
 
 ---@param val number
@@ -245,7 +253,7 @@ local function addFog(cell)
 	if not isCellFogged(cell) then
 		debugLog("Interior cell is not fogged.")
 		local interiorFogColor = getAverageColour(cell)
-		local pos = getFogPosition(cell)
+		local pos, size = getFogLocation(cell)
 
 		if config.interiorNIF then
 			local fogMesh = MESH:clone()
@@ -263,6 +271,10 @@ local function addFog(cell)
 
 				local controller = particleSystem.controller
 				local colorModifier = controller.particleModifiers
+
+				controller.emitterWidth = size.width
+				controller.emitterHeight = size.height
+				controller.emitterDepth = size.depth
 
 				controller.initialSize = table.choice(SIZES)
 
