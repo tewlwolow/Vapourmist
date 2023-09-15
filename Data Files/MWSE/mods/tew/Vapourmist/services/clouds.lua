@@ -77,6 +77,8 @@ local function isAvailable(weather)
 	local weatherName = weather.name
 	return not config.blockedCloud[weatherName]
 	and config.cloudyWeathers[weatherName]
+	and tes3.player.cell.isOrBehavesAsExterior
+
 end
 
 local function getParticleSystemSize(drawDistance)
