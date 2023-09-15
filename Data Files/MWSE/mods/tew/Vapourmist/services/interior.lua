@@ -307,10 +307,10 @@ local function addFog(cell)
 		if config.interiorShader then
 			local calcZPos, calcZRad
 			local depth = math.random(BASE_DEPTH / 1.2, BASE_DEPTH * 2)
-			calcZPos = pos.z + table.choice(HEIGHTS) * math.random(1, 2)
+			calcZPos = pos.z + table.choice(HEIGHTS)
 			if cell.hasWater then
 				calcZRad = depth * 1.5
-				calcZPos = cell.waterLevel + calcZRad
+				calcZPos = cell.waterLevel + calcZRad / 3
 			else
 				calcZPos = pos.z + (table.choice(HEIGHTS) / math.random(6,10))
 				calcZRad = depth
