@@ -82,7 +82,7 @@ local function isAvailable(weather)
 end
 
 local function getParticleSystemSize(drawDistance)
-	return (CELL_SIZE * drawDistance)
+	return (CELL_SIZE * drawDistance) * 1.5
 end
 
 local function getCutoffDistance(drawDistance)
