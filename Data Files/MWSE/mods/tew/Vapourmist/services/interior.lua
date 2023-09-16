@@ -13,7 +13,7 @@ local shader = require("tew.Vapourmist.components.shader")
 
 local MIN_STAT_COUNT = 5
 local MESH = tes3.loadMesh("tew\\Vapourmist\\vapourint.nif")
-local HEIGHTS = { -1750, -1300, -1200, -960, -560 }
+local HEIGHTS = { -900, -850, -800, -750 }
 local SIZES = { 150, 170, 185, 190, 250, 280, 300 }
 
 local MAX_DISTANCE = 8192 * 3
