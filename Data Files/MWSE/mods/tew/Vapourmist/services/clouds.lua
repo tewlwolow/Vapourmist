@@ -198,29 +198,16 @@ end
 
 -- Colour logic
 
-local function getCloudColourMix(fogComp, skyComp)
-	return math.lerp(fogComp, skyComp, 0.8)
-end
-
-local function getModifiedColour(comp)
-	return math.clamp(math.lerp(comp, 0.0, 0.06), 0.03, 0.88)
-end
-
 -- Calculate output colours from current fog colour --
 local function getOutputValues()
 	local currentFogColor = WtC.currentFogColor:copy()
-	local currentSkyColor = WtC.currentSkyColor:copy()
 	local weatherColour = {
-		r = getCloudColourMix(currentFogColor.r, currentSkyColor.r),
-		g = getCloudColourMix(currentFogColor.g, currentSkyColor.g),
-		b = getCloudColourMix(currentFogColor.b, currentSkyColor.b)
+		r = currentFogColor.r,
+		g = currentFogColor.g,
+		b = currentFogColor.b
 	}
 	return {
-		colours = {
-			r = getModifiedColour(weatherColour.r),
-			g = getModifiedColour(weatherColour.g),
-			b = getModifiedColour(weatherColour.b)
-		},
+		colours = weatherColour,
 		angle = WtC.windVelocityCurrWeather:normalized():copy().y * math.pi * 0.5,
 		speed = math.max(WtC.currentWeather.cloudsSpeed * config.speedCoefficient, MIN_SPEED)
 	}
