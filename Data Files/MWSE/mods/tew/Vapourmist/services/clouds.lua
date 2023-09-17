@@ -281,7 +281,6 @@ local function deployEmitter(particleSystem)
 
 	local initialSize = SIZES[math.random(#SIZES)]
 	controller.initialSize = initialSize
-	debug.log(controller.initialSize)
 
 	particleSystem:update()
 	particleSystem:updateProperties()
