@@ -276,7 +276,8 @@ local function addFog(cell)
 				controller.emitterHeight = size.height
 				controller.emitterDepth = size.depth
 
-				controller.initialSize = table.choice(SIZES)
+				local initialSize = SIZES[math.random(#SIZES)]
+				controller.initialSize = initialSize
 
 				for _, key in pairs(colorModifier.colorData.keys) do
 					key.color.r = interiorFogColor.r

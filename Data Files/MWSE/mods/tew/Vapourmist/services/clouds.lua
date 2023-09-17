@@ -27,8 +27,8 @@ local MIN_SPEED = 15
 
 local CUTOFF_COEFF = 4
 
-local HEIGHTS = {2900, 3600, 3800, 4200, 4800, 5200, 5760, 5900, 6000, 6100, 6200, 6800}
-local SIZES = {860, 1200, 1620, 1740, 1917, 2250, 2800, 3156, 3400, 3700}
+local HEIGHTS = {3800, 4200, 4800, 5200, 5760, 5900, 6000, 6100, 6200, 6800}
+local SIZES = {1200, 1620, 1740, 1917, 2250, 2800, 3156, 3400, 3700}
 
 local MESH = tes3.loadMesh("tew\\Vapourmist\\vapourcloud.nif")
 local NAME_MAIN = "tew_Clouds"
@@ -63,7 +63,6 @@ local function getCloudPosition(cell)
 		denom = denom + 1
 	end
 
-	math.randomseed(os.time())
 	local height = HEIGHTS[math.random(#HEIGHTS)]
 
 	if average == 0 or denom == 0 then
@@ -200,7 +199,7 @@ end
 -- Colour logic
 
 local function getCloudColourMix(fogComp, skyComp)
-	return math.lerp(fogComp, skyComp, 0.12)
+	return math.lerp(fogComp, skyComp, 0.8)
 end
 
 local function getModifiedColour(comp)
@@ -274,9 +273,7 @@ local function reColour()
 end
 
 -- NIF values logic
-
 local function deployEmitter(particleSystem)
-	math.randomseed(os.time())
 	local drawDistance = mge.distantLandRenderConfig.drawDistance
 
 	local controller = particleSystem.controller
@@ -295,7 +292,9 @@ local function deployEmitter(particleSystem)
 	controller.emitterHeight = effectSize
 	controller.emitterDepth = math.random(MIN_DEPTH, MAX_DEPTH)
 
-	controller.initialSize = SIZES[math.random(#SIZES)]
+	local initialSize = SIZES[math.random(#SIZES)]
+	controller.initialSize = initialSize
+	debug.log(controller.initialSize)
 
 	particleSystem:update()
 	particleSystem:updateProperties()

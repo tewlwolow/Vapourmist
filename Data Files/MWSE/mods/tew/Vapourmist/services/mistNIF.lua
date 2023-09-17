@@ -67,7 +67,6 @@ local function getMistPosition(cell)
 		denom = denom + 1
 	end
 
-	math.randomseed(os.time())
 	local height = HEIGHTS[math.random(#HEIGHTS)]
 
 	if average == 0 or denom == 0 then
@@ -304,7 +303,6 @@ end
 -- NIF values logic
 
 local function deployEmitter(particleSystem)
-	math.randomseed(os.time())
 	local drawDistance = mge.distantLandRenderConfig.drawDistance
 
 	local controller = particleSystem.controller
@@ -323,7 +321,8 @@ local function deployEmitter(particleSystem)
 	controller.emitterHeight = effectSize
 	controller.emitterDepth = math.random(MIN_DEPTH, MAX_DEPTH)
 
-	controller.initialSize = SIZES[math.random(#SIZES)]
+	local initialSize = SIZES[math.random(#SIZES)]
+	controller.initialSize = initialSize
 
 	particleSystem:update()
 	particleSystem:updateProperties()
