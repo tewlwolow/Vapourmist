@@ -9,8 +9,8 @@ local FOG_ID = "tew_mist"
 local MAX_DISTANCE = 8192 * 3
 local BASE_DEPTH = 8192 / 10
 local TIMER_DURATION = 0.3
-local FADE_DURATION = 0.02
-local STEPS = 100
+local FADE_DURATION = 0.01
+local STEPS = 200
 
 local WtC = tes3.worldController.weatherController
 local WorldC = tes3.worldController
