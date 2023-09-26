@@ -8,6 +8,9 @@ float fogRadi[NUM_FOG_VOLUMES][3];
 float fogColors[NUM_FOG_VOLUMES][3];
 float fogDensities[NUM_FOG_VOLUMES];
 
+float fognearstart;
+float fognearrange;
+
 float3 eyepos;
 float4x4 mview;
 float4x4 mproj;
@@ -85,7 +88,7 @@ float boxDensity(float3 wpos, float3 wdir, float3 p, float3 r, float dbuffer) {
             + (t6/6.0) * (b.x*c.y*c.z + c.x*b.y*c.z + c.x*c.y*b.z)
             + (t7/7.0) * (c.x*c.y*c.z);
 
-    return f - (f * 0.41 * sin(time/25));
+    return f - (f * 0.41 * sin(time/45));
 }
 
 // -------------------------------------------------------------- //
@@ -112,10 +115,10 @@ float4 draw(float2 tex : TEXCOORD, float2 vpos : VPOS) : COLOR0 {
     for (int i = 0; i < NUM_FOG_VOLUMES; i++) {
 
         float3 center = float3(fogCenters[i]);
-        center.z -= (((i + 2) * 320) - 250) * cos(time/45);
+        center.z -= (((i + 2) * 320) - 250) * cos(time/60);
 
         float3 radius = float3(fogRadi[i]);
-        radius.z += ((i + 2) * 150 - 60) * sin(time/33);
+        radius.z += (((i + 2) * 150) - 60) * sin(time/25);
 
         float density = boxDensity(pos, dir, center, radius, depth);
         if (density > 0.0) {
@@ -123,9 +126,14 @@ float4 draw(float2 tex : TEXCOORD, float2 vpos : VPOS) : COLOR0 {
             float fogScalar = 1.0 / sqrt(dot(radius, radius));
             density = density * fogScalar * fogDensities[i];
 
+            // fog blending
+
+            float dist = length(dir) * depth;
+            float fog = saturate((fognearrange - dist) / (fognearrange - fognearstart));
+
             // do the fog stuff
             float3 fogColor = float3(fogColors[i]);
-            color = lerp(fogColor * fogColor, color, exp(-0.5 * density));
+            color = lerp(fogColor * fogColor, color, exp(-0.5 * density * fog * 2));
         }
     }
 
@@ -137,7 +145,7 @@ float4 draw(float2 tex : TEXCOORD, float2 vpos : VPOS) : COLOR0 {
     float dithering = DITHERING[vpos.x % 4][vpos.y % 4];
     color += dithering;
 
-    return float4(color, 1.0);
+    return float4(color, 0.8);
 }
 
 technique T0<string MGEinterface = "MGE XE 0"; string category = "atmosphere";> {
