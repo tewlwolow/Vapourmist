@@ -127,13 +127,12 @@ float4 draw(float2 tex : TEXCOORD, float2 vpos : VPOS) : COLOR0 {
             density = density * fogScalar * fogDensities[i];
 
             // fog blending
-
-            float dist = length(dir) * depth;
-            float fog = saturate((fognearrange - dist) / (fognearrange - fognearstart));
+            // float dist = length(dir) * depth;
+            // float fog = saturate((fognearrange - dist) / (fognearrange - fognearstart)) * 0.8;
 
             // do the fog stuff
             float3 fogColor = float3(fogColors[i]);
-            color = lerp(fogColor * fogColor, color, exp(-0.5 * density * fog * 2));
+            color = lerp(fogColor * fogColor, color, exp(-0.5 * density));
         }
     }
 
@@ -145,7 +144,7 @@ float4 draw(float2 tex : TEXCOORD, float2 vpos : VPOS) : COLOR0 {
     float dithering = DITHERING[vpos.x % 4][vpos.y % 4];
     color += dithering;
 
-    return float4(color, 0.8);
+    return float4(color, 1.0);
 }
 
 technique T0<string MGEinterface = "MGE XE 0"; string category = "atmosphere";> {
