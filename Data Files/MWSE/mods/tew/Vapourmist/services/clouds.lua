@@ -73,11 +73,12 @@ local function getCloudPosition(cell)
 end
 
 local function isAvailable(weather)
+	local cell = tes3.player.cell
+	if not cell then return end
 	local weatherName = weather.name
 	return not config.blockedCloud[weatherName]
 	and config.cloudyWeathers[weatherName]
-	and tes3.player.cell.isOrBehavesAsExterior
-
+	and cell.isOrBehavesAsExterior
 end
 
 local function getParticleSystemSize(drawDistance)

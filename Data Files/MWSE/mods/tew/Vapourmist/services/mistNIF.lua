@@ -79,7 +79,9 @@ end
 local function isAvailable(weather, gameHour)
     local weatherName = weather.name
 
-	if not tes3.player.cell.isOrBehavesAsExterior then return false end
+	local cell = tes3.player.cell
+	if not cell then return end
+	if not cell.isOrBehavesAsExterior then return false end
 
     if config.blockedMist[weatherName] then return false end
 
