@@ -1,4 +1,4 @@
-return mwse.loadConfig (
+return mwse.loadConfig(
     "Vapourmist",
     {
         modEnabled = true,
@@ -12,15 +12,15 @@ return mwse.loadConfig (
         cloudyWeathers = {
             ["Cloudy"] = true,
             ["Rain"] = true,
-            ["Thunderstorm"] = true
+            ["Thunderstorm"] = true,
         },
         mistyWeathers = {
             ["Foggy"] = true,
-            ["Overcast"] = true
+            ["Overcast"] = true,
         },
         blockedCloud = {
             ["Ashstorm"] = true,
-            ["Blight"] = true
+            ["Blight"] = true,
         },
         blockedMist = {
             ["Ashstorm"] = true,
@@ -28,8 +28,8 @@ return mwse.loadConfig (
             ["Snow"] = true,
             ["Blizzard"] = true,
             ["Rain"] = true,
-            ["Thunderstorm"] = true
+            ["Thunderstorm"] = true,
         },
-        blockedInteriors = {}
+        blockedInteriors = {},
     }
 )

@@ -13,7 +13,7 @@ local services = {
 			event.register(tes3.event.weatherChangedImmediate, clouds.onWeatherChanged)
 			event.register(tes3.event.weatherTransitionStarted, clouds.onWeatherChanged)
 			event.register(tes3.event.weatherTransitionFinished, clouds.onWeatherChanged)
-			event.register(tes3.event.uiActivated, clouds.onWaitMenu, { filter = "MenuTimePass"})
+			event.register(tes3.event.uiActivated, clouds.onWaitMenu, { filter = "MenuTimePass" })
 			clouds.onLoaded()
 		end,
 		stop = function()
@@ -24,9 +24,9 @@ local services = {
 			event.unregister(tes3.event.weatherChangedImmediate, clouds.onWeatherChanged)
 			event.unregister(tes3.event.weatherTransitionStarted, clouds.onWeatherChanged)
 			event.unregister(tes3.event.weatherTransitionFinished, clouds.onWeatherChanged)
-			event.unregister(tes3.event.uiActivated, clouds.onWaitMenu, { filter = "MenuTimePass"})
+			event.unregister(tes3.event.uiActivated, clouds.onWaitMenu, { filter = "MenuTimePass" })
 			clouds.detachAll()
-		end
+		end,
 	},
 	mistShader = {
 		init = function()
@@ -34,10 +34,10 @@ local services = {
 			local shader = require("tew.Vapourmist.components.shader")
 			event.register("VAPOURMIST:enteredInterior", mistShader.removeMist)
 			event.register(tes3.event.loaded, mistShader.onLoaded)
-			event.register(tes3.event.cellChanged, mistShader.conditionCheck, {priority = -500})
+			event.register(tes3.event.cellChanged, mistShader.conditionCheck, { priority = -500 })
 			event.register(tes3.event.weatherChangedImmediate, mistShader.onWeatherChangedImmediate)
 			event.register(tes3.event.weatherTransitionStarted, mistShader.onWeatherChanged)
-			event.register(tes3.event.uiActivated, mistShader.onWaitMenu, { filter = "MenuTimePass"})
+			event.register(tes3.event.uiActivated, mistShader.onWaitMenu, { filter = "MenuTimePass" })
 			event.register("VAPOURMIST:enteredUnderwater", shader.disableFog)
 			event.register("VAPOURMIST:exitedUnderwater", shader.enableFog)
 			mistShader.onLoaded()
@@ -47,14 +47,14 @@ local services = {
 			local shader = require("tew.Vapourmist.components.shader")
 			event.unregister("VAPOURMIST:enteredInterior", mistShader.removeMist)
 			event.unregister(tes3.event.loaded, mistShader.onLoaded)
-			event.unregister(tes3.event.cellChanged, mistShader.conditionCheck, {priority = -500})
+			event.unregister(tes3.event.cellChanged, mistShader.conditionCheck, { priority = -500 })
 			event.unregister(tes3.event.weatherChangedImmediate, mistShader.onWeatherChangedImmediate)
 			event.unregister(tes3.event.weatherTransitionStarted, mistShader.onWeatherChanged)
-			event.unregister(tes3.event.uiActivated, mistShader.onWaitMenu, { filter = "MenuTimePass"})
+			event.unregister(tes3.event.uiActivated, mistShader.onWaitMenu, { filter = "MenuTimePass" })
 			event.unregister("VAPOURMIST:enteredUnderwater", shader.disableFog)
 			event.unregister("VAPOURMIST:exitedUnderwater", shader.enableFog)
 			mistShader.removeMist()
-		end
+		end,
 	},
 	mistNIF = {
 		init = function()
@@ -65,7 +65,7 @@ local services = {
 			event.register(tes3.event.weatherChangedImmediate, mistNIF.conditionCheck)
 			event.register(tes3.event.weatherTransitionStarted, mistNIF.onWeatherChanged)
 			event.register(tes3.event.weatherTransitionFinished, mistNIF.conditionCheck)
-			event.register(tes3.event.uiActivated, mistNIF.onWaitMenu, { filter = "MenuTimePass"})
+			event.register(tes3.event.uiActivated, mistNIF.onWaitMenu, { filter = "MenuTimePass" })
 			event.register("VAPOURMIST:enteredUnderwater", mistNIF.hideAll)
 			event.register("VAPOURMIST:exitedUnderwater", mistNIF.unhideAll)
 			mistNIF.onLoaded()
@@ -78,28 +78,28 @@ local services = {
 			event.unregister(tes3.event.weatherChangedImmediate, mistNIF.conditionCheck)
 			event.unregister(tes3.event.weatherTransitionStarted, mistNIF.onWeatherChanged)
 			event.unregister(tes3.event.weatherTransitionFinished, mistNIF.conditionCheck)
-			event.unregister(tes3.event.uiActivated, mistNIF.onWaitMenu, { filter = "MenuTimePass"})
+			event.unregister(tes3.event.uiActivated, mistNIF.onWaitMenu, { filter = "MenuTimePass" })
 			event.unregister("VAPOURMIST:enteredUnderwater", mistNIF.hideAll)
 			event.unregister("VAPOURMIST:exitedUnderwater", mistNIF.unhideAll)
 			mistNIF.detachAll()
-		end
+		end,
 	},
 	interior = {
 		init = function()
 			local interior = require("tew.Vapourmist.services.interior")
-			event.register(tes3.event.cellChanged, interior.onCellChanged, {priority = 500})
+			event.register(tes3.event.cellChanged, interior.onCellChanged, { priority = 500 })
 			event.register("VAPOURMIST:enteredUnderwater", interior.hideAll)
 			event.register("VAPOURMIST:exitedUnderwater", interior.unhideAll)
 			interior.onCellChanged()
 		end,
 		stop = function()
 			local interior = require("tew.Vapourmist.services.interior")
-			event.unregister(tes3.event.cellChanged, interior.onCellChanged, {priority = 500})
+			event.unregister(tes3.event.cellChanged, interior.onCellChanged, { priority = 500 })
 			event.unregister("VAPOURMIST:enteredUnderwater", interior.hideAll)
 			event.unregister("VAPOURMIST:exitedUnderwater", interior.unhideAll)
 			interior.removeAllFog()
-		end
-	}
+		end,
+	},
 }
 
 for serviceName, service in pairs(services) do
@@ -146,5 +146,3 @@ local function underWaterCheck(e)
 end
 event.unregister(tes3.event.simulate, underWaterCheck)
 event.register(tes3.event.simulate, underWaterCheck)
-
-

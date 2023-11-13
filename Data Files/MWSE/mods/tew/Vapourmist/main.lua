@@ -8,9 +8,9 @@ local metadata = toml.loadMetadata("Vapourmist")
 
 local function init()
     if not (metadata) then
-		util.metadataMissing()
-	end
-    mwse.log("[" .. metadata.package.name .."] Version " .. metadata.package.version .. " initialised.")
+        util.metadataMissing()
+    end
+    mwse.log("[" .. metadata.package.name .. "] Version " .. metadata.package.version .. " initialised.")
     dofile("Data Files\\MWSE\\mods\\tew\\Vapourmist\\components\\events.lua")
 end
 

@@ -27,8 +27,8 @@ local MIN_SPEED = 15
 
 local CUTOFF_COEFF = 4
 
-local HEIGHTS = {3800, 4200, 4800, 5200, 5760, 5900, 6000, 6100, 6200, 6800}
-local SIZES = {1200, 1620, 1740, 1917, 2250, 2800, 3156, 3400, 3700}
+local HEIGHTS = { 3800, 4200, 4800, 5200, 5760, 5900, 6000, 6100, 6200, 6800 }
+local SIZES = { 1200, 1620, 1740, 1917, 2250, 2800, 3156, 3400, 3700 }
 
 local MESH = tes3.loadMesh("tew\\Vapourmist\\vapourcloud.nif")
 local NAME_MAIN = "tew_Clouds"
@@ -36,7 +36,7 @@ local NAME_EMITTER = "tew_Clouds_Emitter"
 local NAME_PARTICLE_SYSTEMS = {
 	"tew_Clouds_ParticleSystem_1",
 	"tew_Clouds_ParticleSystem_2",
-	"tew_Clouds_ParticleSystem_3"
+	"tew_Clouds_ParticleSystem_3",
 }
 
 -->>>---------------------------------------------------------------------------------------------<<<--
@@ -77,8 +77,8 @@ local function isAvailable(weather)
 	if not cell then return end
 	local weatherName = weather.name
 	return not config.blockedCloud[weatherName]
-	and config.cloudyWeathers[weatherName]
-	and cell.isOrBehavesAsExterior
+		and config.cloudyWeathers[weatherName]
+		and cell.isOrBehavesAsExterior
 end
 
 local function getParticleSystemSize(drawDistance)
@@ -172,12 +172,12 @@ local function appCull(node)
 	local emitter = node:getObjectByName(NAME_EMITTER)
 	if not (emitter.appCulled) then
 		switchAppCull(node, true)
-		timer.start{
+		timer.start {
 			type = timer.simulate,
 			duration = MAX_LIFESPAN,
 			iterations = 1,
 			persistent = false,
-			callback = function() addToRemoveQueue(node) end
+			callback = function() addToRemoveQueue(node) end,
 		}
 		debugLog("Clouds appculled.")
 		addToAppCulledTracker(node)
@@ -205,12 +205,12 @@ local function getOutputValues()
 	local weatherColour = {
 		r = currentFogColor.r,
 		g = currentFogColor.g,
-		b = currentFogColor.b
+		b = currentFogColor.b,
 	}
 	return {
 		colours = weatherColour,
 		angle = WtC.windVelocityCurrWeather:normalized():copy().y * math.pi * 0.5,
-		speed = math.max(WtC.currentWeather.cloudsSpeed * config.speedCoefficient, MIN_SPEED)
+		speed = math.max(WtC.currentWeather.cloudsSpeed * config.speedCoefficient, MIN_SPEED),
 	}
 end
 
@@ -250,7 +250,6 @@ local function reColourTable(tab, cloudColour, speed, angle)
 end
 
 local function reColour()
-
 	local output = getOutputValues()
 	local cloudColour = output.colours
 	local speed = output.speed
@@ -378,7 +377,7 @@ function clouds.onWeatherChanged()
 			type = timer.game,
 			iterations = 1,
 			duration = 0.2,
-			callback = clouds.onWeatherChanged
+			callback = clouds.onWeatherChanged,
 		}
 	else
 		addClouds()
@@ -415,12 +414,12 @@ end
 -- Time and event logic
 
 local function startTimer()
-	timer.start{
+	timer.start {
 		duration = TIMER_DURATION,
 		callback = clouds.conditionCheck,
 		iterations = -1,
 		type = timer.game,
-		persist = false
+		persist = false,
 	}
 end
 

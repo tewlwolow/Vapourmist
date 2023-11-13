@@ -5,7 +5,7 @@ local metadata = toml.loadMetadata("Vapourmist")
 local function registerVariable(id)
     return mwse.mcm.createTableVariable {
         id = id,
-        table = config
+        table = config,
     }
 end
 
@@ -15,19 +15,19 @@ local template = mwse.mcm.createTemplate {
 
 local mainPage = template:createPage { label = "Main Settings", noScroll = true }
 mainPage:createCategory {
-    label = metadata.package.name .. " " .. metadata.package.version .. " by tewlwolow.\n" .. metadata.package.description .."\n\nSettings:"
+    label = metadata.package.name .. " " .. metadata.package.version .. " by tewlwolow.\n" .. metadata.package.description .. "\n\nSettings:",
 }
 
-mainPage:createOnOffButton{
+mainPage:createOnOffButton {
     label = "Enable Vapourmist?",
     description = "Enable Vapourmist?\n\nDefault: On\n\n",
-    variable = registerVariable("modEnabled")
+    variable = registerVariable("modEnabled"),
 }
 
 mainPage:createYesNoButton {
     label = "Enable debug mode?",
     variable = registerVariable("debugLogOn"),
-    restartRequired = true
+    restartRequired = true,
 }
 mainPage:createYesNoButton {
     label = "Enable clouds?",
@@ -56,7 +56,7 @@ mainPage:createSlider {
     max = 100,
     step = 1,
     jump = 10,
-    variable = registerVariable("speedCoefficient")
+    variable = registerVariable("speedCoefficient"),
 }
 
 local weathersPage = template:createPage { label = "Allowed weathers", noScroll = true }
@@ -93,10 +93,10 @@ weathersPage:createExclusionsPage {
                     table.sort(weatherNames)
                     return weatherNames
                 end
-            )
+            ),
         },
 
-    }
+    },
 }
 
 weathersPage:createExclusionsPage {
@@ -128,10 +128,10 @@ weathersPage:createExclusionsPage {
                     table.sort(weatherNames)
                     return weatherNames
                 end
-                )
+            ),
         },
 
-    }
+    },
 }
 
 local blockedPage = template:createPage { label = "Disallowed weathers", noScroll = true }
@@ -168,10 +168,10 @@ blockedPage:createExclusionsPage {
                     table.sort(weatherNames)
                     return weatherNames
                 end
-            )
+            ),
         },
 
-    }
+    },
 }
 
 blockedPage:createExclusionsPage {
@@ -203,10 +203,10 @@ blockedPage:createExclusionsPage {
                     table.sort(weatherNames)
                     return weatherNames
                 end
-            )
+            ),
         },
 
-    }
+    },
 }
 
 local blacklistPage = template:createPage { label = "Interior cell blacklist", noScroll = true }
@@ -234,7 +234,7 @@ blacklistPage:createExclusionsPage {
                 function()
                     local interiors = {}
                     for cell in tes3.iterate(tes3.dataHandler.nonDynamicData.cells) do
-						if not cell.isOrBehavesAsExterior then
+                        if not cell.isOrBehavesAsExterior then
                             table.insert(interiors, cell.name)
                         end
                     end
@@ -242,10 +242,10 @@ blacklistPage:createExclusionsPage {
                     table.sort(interiors)
                     return interiors
                 end
-            )
+            ),
         },
 
-    }
+    },
 }
 
 
