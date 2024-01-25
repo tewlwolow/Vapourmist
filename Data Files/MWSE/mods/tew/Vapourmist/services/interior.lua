@@ -22,7 +22,7 @@ local DENSITY = 4
 local BASE_COLOUR = {
 	r = 0.3,
 	g = 0.2,
-	b = 0.08
+	b = 0.08,
 }
 
 local NAME_MAIN = "tew_InteriorFog"
@@ -30,7 +30,7 @@ local NAME_EMITTER = "tew_InteriorFog_Emitter"
 local NAME_PARTICLE_SYSTEMS = {
 	"tew_InteriorFog_ParticleSystem_1",
 	"tew_InteriorFog_ParticleSystem_2",
-	"tew_InteriorFog_ParticleSystem_3"
+	"tew_InteriorFog_ParticleSystem_3",
 }
 
 
@@ -71,7 +71,7 @@ local interiorStatics = {
 	"t_de_dngrtrongh",
 	"t_imp_dngsewers",
 	"in_om_",
-	"dngdirenni"
+	"dngdirenni",
 }
 
 local interiorNames = {
@@ -81,7 +81,7 @@ local interiorNames = {
 	"cave",
 	"cavern",
 	"crypt",
-	"tomb"
+	"tomb",
 }
 
 local tracker = {}
@@ -90,7 +90,6 @@ local tracker = {}
 -- Functions
 
 local function isAvailable(cell)
-
 	if cell.name then
 		if config.blockedInteriors[cell.name] then
 			return false
@@ -126,7 +125,7 @@ local function switchAppCull(node, bool)
 end
 
 function interior.hideAll()
-	local vfxRoot = tes3.game.worldSceneGraphRoot.children[9]
+	local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
 	for _, node in pairs(vfxRoot.children) do
 		if node and node.name == NAME_MAIN then
 			switchAppCull(node, true)
@@ -136,7 +135,7 @@ function interior.hideAll()
 end
 
 function interior.unhideAll()
-	local vfxRoot = tes3.game.worldSceneGraphRoot.children[9]
+	local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
 	for _, node in pairs(vfxRoot.children) do
 		if node and node.name == NAME_MAIN then
 			-- local emitter = node:getObjectByName(NAME_EMITTER)
@@ -145,7 +144,6 @@ function interior.unhideAll()
 	end
 	shader.enableFog()
 end
-
 
 local function isCellFogged(cell)
 	return table.find(tracker, cell)
@@ -158,7 +156,7 @@ end
 function interior.removeAllFog()
 	if not tracker or table.empty(tracker) then return end
 
-	local vfxRoot = tes3.game.worldSceneGraphRoot.children[9]
+	local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
 	for _, node in pairs(vfxRoot.children) do
 		if node and node.name == NAME_MAIN then
 			vfxRoot:detachChild(node)
@@ -188,7 +186,7 @@ local function getFogLocation(cell)
 
 	local calcZPos
 	if cell.hasWater then
-		calcZPos = cell.waterLevel - (table.choice(HEIGHTS) * math.random(1,3))
+		calcZPos = cell.waterLevel - (table.choice(HEIGHTS) * math.random(1, 3))
 	else
 		calcZPos = math.lerp((pos.z / denom), math.min(table.unpack(zs)), 0.05)
 	end
@@ -198,7 +196,7 @@ local function getFogLocation(cell)
 		{
 			width = math.abs(math.max(table.unpack(xs)) - math.min(table.unpack(xs))),
 			height = math.abs(math.max(table.unpack(ys)) - math.min(table.unpack(ys))),
-			depth =  math.abs(math.max(table.unpack(zs)) - math.min(table.unpack(zs))),
+			depth = math.abs(math.max(table.unpack(zs)) - math.min(table.unpack(zs))),
 		}
 end
 
@@ -210,36 +208,41 @@ end
 
 ---@param cell tes3cell
 local function getAverageColour(cell)
-	local colour = {r = 0, g = 0, b = 0}
+	local colour = { r = 0, g = 0, b = 0 }
 	local denom = 0
 
 	local ambient = {
-		r = math.lerp(cell.ambientColor.r > 0 and cell.ambientColor.r/100 or BASE_COLOUR.r, cell.fogColor.r > 0 and cell.fogColor.r/100 or BASE_COLOUR.r, 0.5),
-		g =  math.lerp(cell.ambientColor.g > 0 and cell.ambientColor.g/100 or BASE_COLOUR.g, cell.fogColor.g > 0 and cell.fogColor.g/100 or BASE_COLOUR.g, 0.5),
-		b = math.lerp(cell.ambientColor.b > 0 and cell.ambientColor.b/100 or BASE_COLOUR.b, cell.fogColor.b > 0 and cell.fogColor.b/100 or BASE_COLOUR.b, 0.5),
+		r = math.lerp(cell.ambientColor.r > 0 and cell.ambientColor.r / 100 or BASE_COLOUR.r,
+			cell.fogColor.r > 0 and cell.fogColor.r / 100 or BASE_COLOUR.r, 0.5),
+		g = math.lerp(cell.ambientColor.g > 0 and cell.ambientColor.g / 100 or BASE_COLOUR.g,
+			cell.fogColor.g > 0 and cell.fogColor.g / 100 or BASE_COLOUR.g, 0.5),
+		b = math.lerp(cell.ambientColor.b > 0 and cell.ambientColor.b / 100 or BASE_COLOUR.b,
+			cell.fogColor.b > 0 and cell.fogColor.b / 100 or BASE_COLOUR.b, 0.5),
 	}
 
 	for light in cell:iterateReferences(tes3.objectType.light) do
 		local object = light.object
 		if (
-			object.color[1] < 0 or
-			object.color[2] < 0 or
-			object.color[2] < 0
-		) then return end
+				object.color[1] < 0 or
+				object.color[2] < 0 or
+				object.color[2] < 0
+			) then
+			return
+		end
 		colour.r = (colour.r + (object.color[1] > 0 and object.color[1] or 55) / 255)
 		colour.g = (colour.g + (object.color[2] > 0 and object.color[2] or 55) / 255)
 		colour.b = (colour.b + (object.color[3] > 0 and object.color[3] or 55) / 255)
 		denom = denom + 1
 	end
 
-	colour.r = math.lerp(colour.r/denom, ambient.r, 0.9)
-	colour.g = math.lerp(colour.g/denom, ambient.g, 0.9)
-	colour.b = math.lerp(colour.b/denom, ambient.b, 0.9)
+	colour.r = math.lerp(colour.r / denom, ambient.r, 0.9)
+	colour.g = math.lerp(colour.g / denom, ambient.g, 0.9)
+	colour.b = math.lerp(colour.b / denom, ambient.b, 0.9)
 
 	if denom == 0 then
 		return BASE_COLOUR
 	else
-		return { r = amplifyColour(colour.r, 'r'), g = amplifyColour(colour.g, 'g'), b = amplifyColour(colour.b, 'b') }
+		return { r = amplifyColour(colour.r, "r"), g = amplifyColour(colour.g, "g"), b = amplifyColour(colour.b, "b") }
 	end
 end
 
@@ -248,7 +251,7 @@ end
 local function addFog(cell)
 	debugLog("Adding interior fog.")
 
-	local vfxRoot = tes3.game.worldSceneGraphRoot.children[9]
+	local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
 
 	if not isCellFogged(cell) then
 		debugLog("Interior cell is not fogged.")
@@ -313,7 +316,7 @@ local function addFog(cell)
 				calcZRad = depth * 1.5
 				calcZPos = cell.waterLevel + calcZRad / 3
 			else
-				calcZPos = pos.z + (table.choice(HEIGHTS) / math.random(6,10))
+				calcZPos = pos.z + (table.choice(HEIGHTS) / math.random(6, 10))
 				calcZRad = depth
 			end
 
@@ -329,7 +332,7 @@ local function addFog(cell)
 					calcZPos
 				),
 				radius = tes3vector3.new(MAX_DISTANCE, MAX_DISTANCE, calcZRad),
-				density = math.random(DENSITY/3, DENSITY*1.3)
+				density = math.random(DENSITY / 3, DENSITY * 1.3),
 			}
 
 			shader.createOrUpdateFog(NAME_MAIN, fogParams)

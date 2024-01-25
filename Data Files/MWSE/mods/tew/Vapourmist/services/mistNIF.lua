@@ -25,12 +25,12 @@ local MAX_BIRTHRATE = 1.8
 
 local CUTOFF_COEFF = 4
 
-local HEIGHTS = {1156, 1200, 1260, 1300}
-local SIZES = {580, 650, 700, 800, 1100, 1200}
+local HEIGHTS = { 1156, 1200, 1260, 1300 }
+local SIZES = { 580, 650, 700, 800, 1100, 1200 }
 
 local wetWeathers = {
-    ["Rain"] = true,
-    ["Thunderstorm"] = true
+	["Rain"] = true,
+	["Thunderstorm"] = true,
 }
 
 local MESH = tes3.loadMesh("tew\\Vapourmist\\vapourmist.nif")
@@ -39,7 +39,7 @@ local NAME_EMITTER = "tew_Mist_Emitter"
 local NAME_PARTICLE_SYSTEMS = {
 	"tew_Mist_ParticleSystem_1",
 	"tew_Mist_ParticleSystem_2",
-	"tew_Mist_ParticleSystem_3"
+	"tew_Mist_ParticleSystem_3",
 }
 
 -->>>---------------------------------------------------------------------------------------------<<<--
@@ -77,25 +77,25 @@ local function getMistPosition(cell)
 end
 
 local function isAvailable(weather, gameHour)
-    local weatherName = weather.name
+	local weatherName = weather.name
 
 	local cell = tes3.player.cell
 	if not cell then return end
 	if not cell.isOrBehavesAsExterior then return false end
 
-    if config.blockedMist[weatherName] then return false end
+	if config.blockedMist[weatherName] then return false end
 
-    return
-    ((
-        (gameHour > WtC.sunriseHour - 1 and gameHour < WtC.sunriseHour + 1.5)
-    or
-        (gameHour >= WtC.sunsetHour - 0.4 and gameHour < WtC.sunsetHour + 2))
-    and not
-        wetWeathers[weatherName])
-    or
-    (
-        config.mistyWeathers[weatherName]
-    )
+	return
+		((
+				(gameHour > WtC.sunriseHour - 1 and gameHour < WtC.sunriseHour + 1.5)
+				or
+				(gameHour >= WtC.sunsetHour - 0.4 and gameHour < WtC.sunsetHour + 2))
+			and not
+			wetWeathers[weatherName])
+		or
+		(
+			config.mistyWeathers[weatherName]
+		)
 end
 
 local function getParticleSystemSize(drawDistance)
@@ -168,7 +168,7 @@ end
 
 function mistNIF.detachAll()
 	debugLog("Detaching all mist.")
-	local vfxRoot = tes3.game.worldSceneGraphRoot.children[9]
+	local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
 	for _, node in pairs(vfxRoot.children) do
 		if node and node.name == NAME_MAIN then
 			detach(vfxRoot, node)
@@ -186,7 +186,7 @@ local function switchAppCull(node, bool)
 end
 
 function mistNIF.hideAll()
-	local vfxRoot = tes3.game.worldSceneGraphRoot.children[9]
+	local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
 	for _, node in pairs(vfxRoot.children) do
 		if node and node.name == NAME_MAIN then
 			switchAppCull(node, true)
@@ -195,7 +195,7 @@ function mistNIF.hideAll()
 end
 
 function mistNIF.unhideAll()
-	local vfxRoot = tes3.game.worldSceneGraphRoot.children[9]
+	local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
 	for _, node in pairs(vfxRoot.children) do
 		if node and node.name == NAME_MAIN then
 			-- local emitter = node:getObjectByName(NAME_EMITTER)
@@ -208,12 +208,12 @@ local function appCull(node)
 	local emitter = node:getObjectByName(NAME_EMITTER)
 	if not (emitter.appCulled) then
 		switchAppCull(node, true)
-		timer.start{
+		timer.start {
 			type = timer.simulate,
 			duration = MAX_LIFESPAN,
 			iterations = 1,
 			persistent = false,
-			callback = function() addToRemoveQueue(node) end
+			callback = function() addToRemoveQueue(node) end,
 		}
 		debugLog("Mist appculled.")
 		addToAppCulledTracker(node)
@@ -225,7 +225,7 @@ end
 
 local function appCullAll()
 	debugLog("Appculling all mist.")
-	local vfxRoot = tes3.game.worldSceneGraphRoot.children[9]
+	local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
 	for _, node in pairs(vfxRoot.children) do
 		if node and node.name == NAME_MAIN then
 			appCull(node)
@@ -250,14 +250,14 @@ local function getOutputValues()
 	local weatherColour = {
 		r = getMistColourMix(currentFogColor.r, currentSkyColor.r),
 		g = getMistColourMix(currentFogColor.g, currentSkyColor.g),
-		b = getMistColourMix(currentFogColor.b, currentSkyColor.b)
+		b = getMistColourMix(currentFogColor.b, currentSkyColor.b),
 	}
 	return {
 		colours = {
 			r = getModifiedColour(weatherColour.r),
 			g = getModifiedColour(weatherColour.g),
-			b = getModifiedColour(weatherColour.b)
-		}
+			b = getModifiedColour(weatherColour.b),
+		},
 	}
 end
 
@@ -294,7 +294,6 @@ local function reColourTable(tab, mistColour)
 end
 
 local function reColour()
-
 	local output = getOutputValues()
 	local mistColour = output.colours
 
@@ -334,7 +333,7 @@ end
 
 local function addMist()
 	debugLog("Adding mist.")
-	local vfxRoot = tes3.game.worldSceneGraphRoot.children[9]
+	local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
 	local cell = tes3.getPlayerCell()
 
 	local mp = tes3.mobilePlayer
@@ -409,7 +408,7 @@ end
 function mistNIF.onWeatherChanged(e)
 	debugLog("Starting weather check.")
 	local fromWeather = e.from
-    toWeather = e.to
+	toWeather = e.to
 	local gameHour = WorldC.hour.value
 
 	if not isAvailable(toWeather, gameHour) then
@@ -426,7 +425,7 @@ function mistNIF.onWeatherChanged(e)
 			callback = function()
 				debugLog("Deploying post-rain mist.")
 				addMist()
-			end
+			end,
 		}
 	end
 end
@@ -440,7 +439,7 @@ function mistNIF.conditionCheck()
 	toWeather = WtC.nextWeather or WtC.currentWeather
 
 	for _, node in ipairs(removeQueue) do
-		local vfxRoot = tes3.game.worldSceneGraphRoot.children[9]
+		local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
 		detach(vfxRoot, node)
 	end
 
@@ -463,12 +462,12 @@ end
 -- Time and event logic
 
 local function startTimer()
-	timer.start{
+	timer.start {
 		duration = TIMER_DURATION,
 		callback = mistNIF.conditionCheck,
 		iterations = -1,
 		type = timer.game,
-		persist = false
+		persist = false,
 	}
 end
 

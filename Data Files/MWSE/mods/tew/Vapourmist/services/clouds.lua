@@ -151,7 +151,7 @@ end
 
 function clouds.detachAll()
 	debugLog("Detaching all clouds.")
-	local vfxRoot = tes3.game.worldSceneGraphRoot.children[9]
+	local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
 	for _, node in pairs(vfxRoot.children) do
 		if node and node.name == NAME_MAIN then
 			detach(vfxRoot, node)
@@ -189,7 +189,7 @@ end
 
 local function appCullAll()
 	debugLog("Appculling all clouds.")
-	local vfxRoot = tes3.game.worldSceneGraphRoot.children[9]
+	local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
 	for _, node in pairs(vfxRoot.children) do
 		if node and node.name == NAME_MAIN then
 			appCull(node)
@@ -290,7 +290,7 @@ end
 
 local function addClouds()
 	debugLog("Adding clouds.")
-	local vfxRoot = tes3.game.worldSceneGraphRoot.children[9]
+	local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
 	local cell = tes3.getPlayerCell()
 
 	local mp = tes3.mobilePlayer
@@ -391,7 +391,7 @@ function clouds.conditionCheck()
 	toWeather = WtC.nextWeather or WtC.currentWeather
 
 	for _, node in ipairs(removeQueue) do
-		local vfxRoot = tes3.game.worldSceneGraphRoot.children[9]
+		local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
 		detach(vfxRoot, node)
 	end
 
