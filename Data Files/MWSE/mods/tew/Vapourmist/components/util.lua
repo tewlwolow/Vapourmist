@@ -29,4 +29,14 @@ function util.metadataMissing()
 	error(errorMessage)
 end
 
+function util.safeAddToTable(obj, tab)
+	tab[obj] = tes3.makeSafeObjectHandle(obj)
+end
+
+function util.safeGetFromTable(obj, tab)
+	if table.empty(tab) or not obj or not tab[obj] then return end
+	local obj_safe = tab[obj]
+	return obj_safe:valid() and obj_safe:getObject()
+end
+
 return util

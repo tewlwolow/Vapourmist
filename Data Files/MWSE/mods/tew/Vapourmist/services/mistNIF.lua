@@ -7,6 +7,9 @@ local util = require("tew.Vapourmist.components.util")
 local debugLog = util.debugLog
 local config = require("tew.Vapourmist.config")
 
+local safeAddToTable = util.safeAddToTable
+local safeGetFromTable = util.safeGetFromTable
+
 -->>>---------------------------------------------------------------------------------------------<<<--
 -- Constants
 
@@ -117,43 +120,43 @@ end
 
 -- Table logic
 
-local function removeFromTable(tab, val)
-	local pos = table.find(tab, val)
-	if pos then
-		table.remove(tab, pos)
-	else
-		tab = {}
-	end
-end
-
 local function addToTracker(mist)
-	table.insert(tracker, mist)
+	safeAddToTable(mist, tracker)
 	debugLog("Mist added to tracker.")
 end
 
 local function removeFromTracker(mist)
-	removeFromTable(tracker, mist)
-	debugLog("Mist removed from tracker.")
+	local m = safeGetFromTable(mist, tracker)
+	if m then
+		tracker[mist] = nil
+		debugLog("Mist removed from tracker.")
+	end
 end
 
 local function addToRemoveQueue(mist)
-	table.insert(removeQueue, mist)
+	safeAddToTable(mist, removeQueue)
 	debugLog("Mist added to removal queue.")
 end
 
 local function removeFromRemoveQueue(mist)
-	removeFromTable(removeQueue, mist)
-	debugLog("Mist removed from removal queue.")
+	local m = safeGetFromTable(mist, removeQueue)
+	if m then
+		removeQueue[mist] = nil
+		debugLog("Mist removed removal queue.")
+	end
 end
 
 local function addToAppCulledTracker(mist)
-	table.insert(appCulledTracker, mist)
+	safeAddToTable(mist, appCulledTracker)
 	debugLog("Mist added to appCulled tracker.")
 end
 
 local function removeFromAppCulledTracker(mist)
-	removeFromTable(appCulledTracker, mist)
-	debugLog("Mist removed from appCulled tracker.")
+	local m = safeGetFromTable(mist, appCulledTracker)
+	if m then
+		appCulledTracker[mist] = nil
+		debugLog("Mist removed from appCulled tracker.")
+	end
 end
 
 -- Hide/show logic
@@ -264,7 +267,7 @@ end
 local function reColourTable(tab, mistColour)
 	if not tab then return end
 	if table.empty(tab) then return end
-	for _, mist in ipairs(tab) do
+	for mist, _ in pairs(tab) do
 		for _, name in ipairs(NAME_PARTICLE_SYSTEMS) do
 			local particleSystem = mist:getObjectByName(name)
 
@@ -438,14 +441,14 @@ function mistNIF.conditionCheck()
 
 	toWeather = WtC.nextWeather or WtC.currentWeather
 
-	for _, node in ipairs(removeQueue) do
+	for node, _ in pairs(removeQueue) do
 		local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
 		detach(vfxRoot, node)
 	end
 
 	if not table.empty(tracker) then
 		debugLog("Tracker not empty. Checking distance.")
-		for _, node in ipairs(tracker) do
+		for node, _ in pairs(tracker) do
 			if not isPlayerClouded(node) then
 				debugLog("Found distant mist.")
 				appCull(node)

@@ -7,6 +7,9 @@ local util = require("tew.Vapourmist.components.util")
 local debugLog = util.debugLog
 local config = require("tew.Vapourmist.config")
 
+local safeAddToTable = util.safeAddToTable
+local safeGetFromTable = util.safeGetFromTable
+
 -->>>---------------------------------------------------------------------------------------------<<<--
 -- Constants
 
@@ -100,43 +103,43 @@ end
 
 -- Table logic
 
-local function removeFromTable(tab, val)
-	local pos = table.find(tab, val)
-	if pos then
-		table.remove(tab, pos)
-	else
-		tab = {}
-	end
-end
-
 local function addToTracker(cloud)
-	table.insert(tracker, cloud)
+	safeAddToTable(cloud, tracker)
 	debugLog("Clouds added to tracker.")
 end
 
 local function removeFromTracker(cloud)
-	removeFromTable(tracker, cloud)
-	debugLog("Clouds removed from tracker.")
+	local m = safeGetFromTable(cloud, tracker)
+	if m then
+		tracker[cloud] = nil
+		debugLog("Clouds removed from tracker.")
+	end
 end
 
 local function addToRemoveQueue(cloud)
-	table.insert(removeQueue, cloud)
+	safeAddToTable(cloud, removeQueue)
 	debugLog("Clouds added to removal queue.")
 end
 
 local function removeFromRemoveQueue(cloud)
-	removeFromTable(removeQueue, cloud)
-	debugLog("Clouds removed from removal queue.")
+	local m = safeGetFromTable(cloud, removeQueue)
+	if m then
+		removeQueue[cloud] = nil
+		debugLog("Clouds removed removal queue.")
+	end
 end
 
 local function addToAppCulledTracker(cloud)
-	table.insert(appCulledTracker, cloud)
+	safeAddToTable(cloud, appCulledTracker)
 	debugLog("Clouds added to appCulled tracker.")
 end
 
 local function removeFromAppCulledTracker(cloud)
-	removeFromTable(appCulledTracker, cloud)
-	debugLog("Clouds removed from appCulled tracker.")
+	local m = safeGetFromTable(cloud, appCulledTracker)
+	if m then
+		appCulledTracker[cloud] = nil
+		debugLog("Clouds removed from appCulled tracker.")
+	end
 end
 
 -- Hide/show logic
@@ -217,7 +220,7 @@ end
 local function reColourTable(tab, cloudColour, speed, angle)
 	if not tab then return end
 	if table.empty(tab) then return end
-	for _, cloud in ipairs(tab) do
+	for cloud, _ in pairs(tab) do
 		for _, name in ipairs(NAME_PARTICLE_SYSTEMS) do
 			local particleSystem = cloud:getObjectByName(name)
 
@@ -390,14 +393,14 @@ function clouds.conditionCheck()
 
 	toWeather = WtC.nextWeather or WtC.currentWeather
 
-	for _, node in ipairs(removeQueue) do
+	for node, _ in pairs(removeQueue) do
 		local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
 		detach(vfxRoot, node)
 	end
 
 	if not table.empty(tracker) then
 		debugLog("Tracker not empty. Checking distance.")
-		for _, node in ipairs(tracker) do
+		for node, _ in pairs(tracker) do
 			if not isPlayerClouded(node) then
 				debugLog("Found distant cloud.")
 				appCull(node)
