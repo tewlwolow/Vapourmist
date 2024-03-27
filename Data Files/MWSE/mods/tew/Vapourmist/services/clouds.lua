@@ -31,7 +31,11 @@ local MIN_SPEED = 15
 local CUTOFF_COEFF = 4
 
 local HEIGHTS = { 3800, 4200, 4800, 5200, 5760, 5900, 6000, 6100, 6200, 6800, 7500, 7900 }
-local SIZES = { 1740, 1917, 2250, 2800, 3156, 3400, 3700 }
+local SIZES = {
+	["small"] = { 400, 520, 600, 850, 923, 1200, 1350 },
+	["medium"] = { 1740, 1917, 2000, 2250, 2800 },
+	["big"] = { 2915, 3156, 3400, 3700, 4002 },
+}
 
 local MESH = tes3.loadMesh("tew\\Vapourmist\\vapourcloud.nif")
 local NAME_MAIN = "tew_Clouds"
@@ -263,7 +267,7 @@ local function reColour()
 end
 
 -- NIF values logic
-local function deployEmitter(particleSystem)
+local function deployEmitter(particleSystem, size)
 	local drawDistance = mge.distantLandRenderConfig.drawDistance
 
 	local controller = particleSystem.controller
@@ -282,7 +286,7 @@ local function deployEmitter(particleSystem)
 	controller.emitterHeight = effectSize
 	controller.emitterDepth = math.random(MIN_DEPTH, MAX_DEPTH)
 
-	local initialSize = SIZES[math.random(#SIZES)]
+	local initialSize = SIZES[size][math.random(#SIZES[size])]
 	controller.initialSize = initialSize
 
 	particleSystem:update()
@@ -327,10 +331,15 @@ local function addClouds()
 
 	addToTracker(cloudNode)
 
+	local sizes = { "small", "medium", "big" }
+
 	for _, name in ipairs(NAME_PARTICLE_SYSTEMS) do
 		local particleSystem = cloudNode:getObjectByName(name)
 		if particleSystem then
-			deployEmitter(particleSystem)
+			local ind = math.random(1, #sizes)
+			local size = sizes[ind]
+			deployEmitter(particleSystem, size)
+			table.remove(sizes, ind)
 		end
 	end
 
