@@ -7,8 +7,6 @@ local util = require("tew.Vapourmist.components.util")
 local debugLog = util.debugLog
 local config = require("tew.Vapourmist.config")
 
-local safeAddToTable = util.safeAddToTable
-local safeGetFromTable = util.safeGetFromTable
 
 -->>>---------------------------------------------------------------------------------------------<<<--
 -- Constants
@@ -46,10 +44,10 @@ local NAME_PARTICLE_SYSTEMS = {
 	"tew_Clouds_ParticleSystem_3",
 }
 
+local clean = true
+
 -->>>---------------------------------------------------------------------------------------------<<<--
 -- Structures
-
-local tracker, removeQueue, appCulledTracker = {}, {}, {}
 
 local toWeather, recolourRegistered
 
@@ -96,64 +94,31 @@ local function getCutoffDistance(drawDistance)
 	return getParticleSystemSize(drawDistance) / CUTOFF_COEFF
 end
 
-local function isPlayerClouded(cloudMesh)
+local function isPlayerClouded()
 	debugLog("Checking if player is clouded.")
-	local mp = tes3.mobilePlayer
-	local playerPos = mp.position:copy()
-	local drawDistance = mge.distantLandRenderConfig.drawDistance
-	return playerPos:distance(cloudMesh.translation:copy()) < (getCutoffDistance(drawDistance))
-end
-
-
--- Table logic
-
-local function addToTracker(cloud)
-	safeAddToTable(cloud, tracker)
-	debugLog("Clouds added to tracker.")
-end
-
-local function removeFromTracker(cloud)
-	local m = safeGetFromTable(cloud, tracker)
-	if m then
-		tracker[cloud] = nil
-		debugLog("Clouds removed from tracker.")
+	local cloudMesh
+	local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
+	for _, node in pairs(vfxRoot.children) do
+		if node and node.name == NAME_MAIN then
+			local emitter = node:getObjectByName(NAME_EMITTER)
+			if not emitter.appCulled then
+				cloudMesh = node
+				local mp = tes3.mobilePlayer
+				local playerPos = mp.position:copy()
+				local drawDistance = mge.distantLandRenderConfig.drawDistance
+				return playerPos:distance(cloudMesh.translation:copy()) < (getCutoffDistance(drawDistance))
+			end
+		end
 	end
 end
 
-local function addToRemoveQueue(cloud)
-	safeAddToTable(cloud, removeQueue)
-	debugLog("Clouds added to removal queue.")
-end
-
-local function removeFromRemoveQueue(cloud)
-	local m = safeGetFromTable(cloud, removeQueue)
-	if m then
-		removeQueue[cloud] = nil
-		debugLog("Clouds removed removal queue.")
-	end
-end
-
-local function addToAppCulledTracker(cloud)
-	safeAddToTable(cloud, appCulledTracker)
-	debugLog("Clouds added to appCulled tracker.")
-end
-
-local function removeFromAppCulledTracker(cloud)
-	local m = safeGetFromTable(cloud, appCulledTracker)
-	if m then
-		appCulledTracker[cloud] = nil
-		debugLog("Clouds removed from appCulled tracker.")
-	end
-end
 
 -- Hide/show logic
 
-local function detach(vfxRoot, node)
-	removeFromAppCulledTracker(node)
+local function detach(node)
+	local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
 	vfxRoot:detachChild(node)
 	debugLog("Cloud detached.")
-	removeFromRemoveQueue(node)
-	removeFromTracker(node)
 end
 
 function clouds.detachAll()
@@ -161,10 +126,23 @@ function clouds.detachAll()
 	local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
 	for _, node in pairs(vfxRoot.children) do
 		if node and node.name == NAME_MAIN then
-			detach(vfxRoot, node)
+			detach(node)
 		end
 	end
-	tracker = {}
+	clean = true
+end
+
+local function cleanAppCulled()
+	local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
+	for _, node in pairs(vfxRoot.children) do
+		if node and node.name == NAME_MAIN then
+			local emitter = node:getObjectByName(NAME_EMITTER)
+			if emitter.appCulled then
+				detach(node)
+			end
+		end
+	end
+	clean = true
 end
 
 local function switchAppCull(node, bool)
@@ -184,11 +162,9 @@ local function appCull(node)
 			duration = MAX_LIFESPAN,
 			iterations = 1,
 			persistent = false,
-			callback = function() addToRemoveQueue(node) end,
+			callback = cleanAppCulled,
 		}
 		debugLog("Clouds appculled.")
-		addToAppCulledTracker(node)
-		removeFromTracker(node)
 	else
 		debugLog("Clouds already appculled. Skipping.")
 	end
@@ -202,6 +178,7 @@ local function appCullAll()
 			appCull(node)
 		end
 	end
+	clean = true
 end
 
 -- Colour logic
@@ -221,37 +198,38 @@ local function getOutputValues()
 	}
 end
 
-local function reColourTable(tab, cloudColour, speed, angle)
-	if not tab then return end
-	if table.empty(tab) then return end
-	for cloud, _ in pairs(tab) do
-		for _, name in ipairs(NAME_PARTICLE_SYSTEMS) do
-			local particleSystem = cloud:getObjectByName(name)
+local function reColourAll(cloudColour, speed, angle)
+	local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
+	for _, node in pairs(vfxRoot.children) do
+		if node and node.name == NAME_MAIN then
+			for _, name in ipairs(NAME_PARTICLE_SYSTEMS) do
+				local particleSystem = node:getObjectByName(name)
 
-			local controller = particleSystem.controller
-			local colorModifier = controller.particleModifiers
+				local controller = particleSystem.controller
+				local colorModifier = controller.particleModifiers
 
-			controller.speed = speed
-			controller.planarAngle = angle
+				controller.speed = speed
+				controller.planarAngle = angle
 
-			for _, key in pairs(colorModifier.colorData.keys) do
-				key.color.r = cloudColour.r
-				key.color.g = cloudColour.g
-				key.color.b = cloudColour.b
+				for _, key in pairs(colorModifier.colorData.keys) do
+					key.color.r = cloudColour.r
+					key.color.g = cloudColour.g
+					key.color.b = cloudColour.b
+				end
+
+				local materialProperty = particleSystem.materialProperty
+				materialProperty.emissive = cloudColour
+				materialProperty.specular = cloudColour
+				materialProperty.diffuse = cloudColour
+				materialProperty.ambient = cloudColour
+
+				particleSystem:update()
+				particleSystem:updateProperties()
+				particleSystem:updateEffects()
+				node:update()
+				node:updateProperties()
+				node:updateEffects()
 			end
-
-			local materialProperty = particleSystem.materialProperty
-			materialProperty.emissive = cloudColour
-			materialProperty.specular = cloudColour
-			materialProperty.diffuse = cloudColour
-			materialProperty.ambient = cloudColour
-
-			particleSystem:update()
-			particleSystem:updateProperties()
-			particleSystem:updateEffects()
-			cloud:update()
-			cloud:updateProperties()
-			cloud:updateEffects()
 		end
 	end
 end
@@ -262,8 +240,7 @@ local function reColour()
 	local speed = output.speed
 	local angle = output.angle
 
-	reColourTable(tracker, cloudColour, speed, angle)
-	reColourTable(appCulledTracker, cloudColour, speed, angle)
+	reColourAll(cloudColour, speed, angle)
 end
 
 -- NIF values logic
@@ -297,7 +274,6 @@ end
 
 local function addClouds()
 	debugLog("Adding clouds.")
-	local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
 	local cell = tes3.getPlayerCell()
 
 	local mp = tes3.mobilePlayer
@@ -315,21 +291,16 @@ local function addClouds()
 	cloudMesh:clearTransforms()
 	cloudMesh.translation = cloudPosition
 
+	local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
 	vfxRoot:attachChild(cloudMesh)
 
 	local cloudNode
 	for _, node in pairs(vfxRoot.children) do
-		if node then
-			if node.name == NAME_MAIN then
-				if not table.find(removeQueue, node) then
-					cloudNode = node
-				end
-			end
+		if node and node.name == NAME_MAIN then
+			cloudNode = node
 		end
 	end
 	if not cloudNode then return end
-
-	addToTracker(cloudNode)
 
 	local sizes = { "small", "medium", "big" }
 
@@ -347,6 +318,7 @@ local function addClouds()
 	cloudMesh:update()
 	cloudMesh:updateProperties()
 	cloudMesh:updateEffects()
+	clean = false
 	debugLog("Clouds added.")
 end
 
@@ -381,7 +353,7 @@ function clouds.onWeatherChanged()
 		return
 	end
 
-	if not table.empty(tracker) then return end
+	if not clean then return end
 
 	if WtC.nextWeather and WtC.transitionScalar < 0.6 then
 		debugLog("Weather transition in progress. Adding clouds in a bit.")
@@ -402,23 +374,18 @@ function clouds.conditionCheck()
 
 	toWeather = WtC.nextWeather or WtC.currentWeather
 
-	for node, _ in pairs(removeQueue) do
-		local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
-		detach(vfxRoot, node)
-	end
+	print(clean)
+	print(isPlayerClouded())
+	print(isAvailable(toWeather))
 
-	if not table.empty(tracker) then
-		debugLog("Tracker not empty. Checking distance.")
-		for node, _ in pairs(tracker) do
-			if not isPlayerClouded(node) then
-				debugLog("Found distant cloud.")
-				appCull(node)
-			end
-		end
-	else
+
+	if clean and not isPlayerClouded() then
 		if isAvailable(toWeather) then
-			debugLog("Tracker is empty. Adding clouds.")
+			appCullAll()
+			debugLog("State clean and conditions eligible. Adding clouds.")
 			addClouds()
+		else
+			clouds.detachAll()
 		end
 	end
 end
@@ -444,7 +411,6 @@ function clouds.onLoaded()
 		recolourRegistered = true
 	end
 	startTimer()
-	tracker, removeQueue = {}, {}
 	clouds.detachAll()
 	clouds.conditionCheck()
 end
