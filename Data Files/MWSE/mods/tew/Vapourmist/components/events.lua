@@ -128,8 +128,7 @@ event.unregister(tes3.event.cellChanged, interiorCheck)
 event.register(tes3.event.cellChanged, interiorCheck)
 
 local underwaterPrev
----@param e simulateEventData
-local function underWaterCheck(e)
+local function underWaterCheck()
 	local mp = tes3.mobilePlayer
 	if mp then
 		if mp.isSwimming and not underwaterPrev then
