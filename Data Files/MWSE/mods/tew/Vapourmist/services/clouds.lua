@@ -30,7 +30,7 @@ local CUTOFF_COEFF = 4
 
 local HEIGHTS = { 3800, 4200, 4800, 5200, 5760, 5900, 6000, 6100, 6200, 6800, 7500, 7900 }
 local SIZES = {
-	["small"] = { 400, 520, 600, 850, 923, 1200, 1350 },
+	["small"] = { 546, 600, 760, 850, 923, 1200, 1350 },
 	["medium"] = { 1740, 1917, 2000, 2250, 2800 },
 	["big"] = { 2915, 3156, 3400, 3700, 4002 },
 }
@@ -44,7 +44,6 @@ local NAME_PARTICLE_SYSTEMS = {
 	"tew_Clouds_ParticleSystem_3",
 }
 
-local clean = true
 
 -->>>---------------------------------------------------------------------------------------------<<<--
 -- Structures
@@ -122,27 +121,28 @@ local function detach(node)
 end
 
 function clouds.detachAll()
-	debugLog("Detaching all clouds.")
+	debugLog("Detaching all clouds...")
 	local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
 	for _, node in pairs(vfxRoot.children) do
 		if node and node.name == NAME_MAIN then
 			detach(node)
 		end
 	end
-	clean = true
+	debugLog("All clouds detached.")
 end
 
-local function cleanAppCulled()
+local function detachAppCulled(state)
+	debugLog("Detaching clouds with appCulled state: " .. tostring(state))
 	local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
 	for _, node in pairs(vfxRoot.children) do
 		if node and node.name == NAME_MAIN then
 			local emitter = node:getObjectByName(NAME_EMITTER)
-			if emitter.appCulled then
+			if emitter.appCulled == state then
 				detach(node)
 			end
 		end
 	end
-	clean = true
+	debugLog("Clouds with appCulled state: " .. tostring(state) .. " detached.")
 end
 
 local function switchAppCull(node, bool)
@@ -162,7 +162,7 @@ local function appCull(node)
 			duration = MAX_LIFESPAN,
 			iterations = 1,
 			persistent = false,
-			callback = cleanAppCulled,
+			callback = function() detachAppCulled(true) end,
 		}
 		debugLog("Clouds appculled.")
 	else
@@ -178,7 +178,6 @@ local function appCullAll()
 			appCull(node)
 		end
 	end
-	clean = true
 end
 
 -- Colour logic
@@ -318,7 +317,6 @@ local function addClouds()
 	cloudMesh:update()
 	cloudMesh:updateProperties()
 	cloudMesh:updateEffects()
-	clean = false
 	debugLog("Clouds added.")
 end
 
@@ -353,8 +351,6 @@ function clouds.onWeatherChanged()
 		return
 	end
 
-	if not clean then return end
-
 	if WtC.nextWeather and WtC.transitionScalar < 0.6 then
 		debugLog("Weather transition in progress. Adding clouds in a bit.")
 		timer.start {
@@ -374,20 +370,16 @@ function clouds.conditionCheck()
 
 	toWeather = WtC.nextWeather or WtC.currentWeather
 
-	print(clean)
-	print(isPlayerClouded())
-	print(isAvailable(toWeather))
-
-
-	if clean and not isPlayerClouded() then
-		if isAvailable(toWeather) then
-			appCullAll()
-			debugLog("State clean and conditions eligible. Adding clouds.")
-			addClouds()
-		else
+	if isAvailable(toWeather) then
+		if not isPlayerClouded() then
+			debugLog("Player not clouded and conditions eligible. Adding clouds.")
 			clouds.detachAll()
+			addClouds()
 		end
+	else
+		appCullAll()
 	end
+
 end
 
 -- Time and event logic
