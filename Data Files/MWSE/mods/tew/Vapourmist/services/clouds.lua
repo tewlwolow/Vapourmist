@@ -1,10 +1,19 @@
 -- Clouds module
 -->>>---------------------------------------------------------------------------------------------<<<--
 
--- Imports
+-- Package
+
+---@type table
 local clouds = {}
+
+-- Imports
+
+---@module 'tew.Vapourmist.components.util'
 local util = require("tew.Vapourmist.components.util")
+---@fun
 local debugLog = util.debugLog
+
+---@module 'tew.Vapourmist.config'
 local config = require("tew.Vapourmist.config")
 
 
@@ -26,18 +35,25 @@ local MAX_BIRTHRATE = 1.8
 
 local MIN_SPEED = 15
 
+
 local CUTOFF_COEFF = 4
 
 local HEIGHTS = { 3800, 4200, 4800, 5200, 5760, 5900, 6000, 6100, 6200, 6800, 7500, 7900 }
+
 local SIZES = {
 	["small"] = { 546, 600, 760, 850, 923, 1200, 1350 },
 	["medium"] = { 1740, 1917, 2000, 2250, 2800 },
 	["big"] = { 2915, 3156, 3400, 3700, 4002 },
 }
 
+---@type niNode
 local MESH = tes3.loadMesh("tew\\Vapourmist\\vapourcloud.nif")
+
+---@type string
 local NAME_MAIN = "tew_Clouds"
+---@type string
 local NAME_EMITTER = "tew_Clouds_Emitter"
+---@type table[string]
 local NAME_PARTICLE_SYSTEMS = {
 	"tew_Clouds_ParticleSystem_1",
 	"tew_Clouds_ParticleSystem_2",
@@ -145,6 +161,8 @@ local function detachAppCulled(state)
 	debugLog("Clouds with appCulled state: " .. tostring(state) .. " detached.")
 end
 
+---@param node niNode
+---@param bool boolean
 local function switchAppCull(node, bool)
 	local emitter = node:getObjectByName(NAME_EMITTER)
 	if (emitter.appCulled ~= bool) then
@@ -286,7 +304,9 @@ local function addClouds()
 		getCloudPosition(cell)
 	)
 
+	---@type niNode
 	local cloudMesh = MESH:clone()
+
 	cloudMesh:clearTransforms()
 	cloudMesh.translation = cloudPosition
 
@@ -379,7 +399,6 @@ function clouds.conditionCheck()
 	else
 		appCullAll()
 	end
-
 end
 
 -- Time and event logic

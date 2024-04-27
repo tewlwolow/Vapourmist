@@ -8,6 +8,7 @@ local metadata = toml.loadMetadata("Vapourmist")
 
 
 -- Print debug messages --
+---@type fun(message: string): nil
 function util.debugLog(message)
 	if config.debugLogOn then
 		if not message then message = "n/a" end
