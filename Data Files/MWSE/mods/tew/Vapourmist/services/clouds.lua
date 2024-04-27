@@ -2,8 +2,6 @@
 -->>>---------------------------------------------------------------------------------------------<<<--
 
 -- Package
-
----@type table
 local clouds = {}
 
 -- Imports
@@ -53,7 +51,7 @@ local MESH = tes3.loadMesh("tew\\Vapourmist\\vapourcloud.nif")
 local NAME_MAIN = "tew_Clouds"
 ---@type string
 local NAME_EMITTER = "tew_Clouds_Emitter"
----@type table[string]
+
 local NAME_PARTICLE_SYSTEMS = {
 	"tew_Clouds_ParticleSystem_1",
 	"tew_Clouds_ParticleSystem_2",
