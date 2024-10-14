@@ -1,14 +1,19 @@
 -- Mist module
 -->>>---------------------------------------------------------------------------------------------<<<--
 
--- Imports
+-- Package
 local mistNIF = {}
+
+-- Imports
+
+---@module 'tew.Vapourmist.components.util'
 local util = require("tew.Vapourmist.components.util")
+---@fun
 local debugLog = util.debugLog
+
+---@module 'tew.Vapourmist.config'
 local config = require("tew.Vapourmist.config")
 
-local safeAddToTable = util.safeAddToTable
-local safeGetFromTable = util.safeGetFromTable
 
 -->>>---------------------------------------------------------------------------------------------<<<--
 -- Constants
@@ -36,7 +41,9 @@ local wetWeathers = {
 	["Thunderstorm"] = true,
 }
 
+---@type niNode
 local MESH = tes3.loadMesh("tew\\Vapourmist\\vapourmist.nif")
+
 local NAME_MAIN = "tew_Mist"
 local NAME_EMITTER = "tew_Mist_Emitter"
 local NAME_PARTICLE_SYSTEMS = {
@@ -47,8 +54,6 @@ local NAME_PARTICLE_SYSTEMS = {
 
 -->>>---------------------------------------------------------------------------------------------<<<--
 -- Structures
-
-local tracker, removeQueue, appCulledTracker = {}, {}, {}
 
 local toWeather, recolourRegistered
 
@@ -109,12 +114,22 @@ local function getCutoffDistance(drawDistance)
 	return getParticleSystemSize(drawDistance) / CUTOFF_COEFF
 end
 
-local function isPlayerClouded(mistMesh)
+local function isPlayerClouded()
 	debugLog("Checking if player is clouded.")
-	local mp = tes3.mobilePlayer
-	local playerPos = mp.position:copy()
-	local drawDistance = mge.distantLandRenderConfig.drawDistance
-	return playerPos:distance(mistMesh.translation:copy()) < (getCutoffDistance(drawDistance))
+	local mistMesh
+	local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
+	for _, node in pairs(vfxRoot.children) do
+		if node and node.name == NAME_MAIN then
+			local emitter = node:getObjectByName(NAME_EMITTER)
+			if not emitter.appCulled then
+				cloudMesh = node
+				local mp = tes3.mobilePlayer
+				local playerPos = mp.position:copy()
+				local drawDistance = mge.distantLandRenderConfig.drawDistance
+				return playerPos:distance(cloudMesh.translation:copy()) < (getCutoffDistance(drawDistance))
+			end
+		end
+	end
 end
 
 
@@ -177,7 +192,6 @@ function mistNIF.detachAll()
 			detach(vfxRoot, node)
 		end
 	end
-	tracker = {}
 end
 
 local function switchAppCull(node, bool)
