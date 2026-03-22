@@ -25,8 +25,7 @@ local CELL_SIZE = 8192
 local MIN_LIFESPAN = 12
 local MAX_LIFESPAN = 23
 
-local MIN_DEPTH = 2000
-local MAX_DEPTH = 4000
+local DEPTHS = { 1500, 1800, 2000, 2500, 3000, 3500, 4000 }
 
 local MIN_BIRTHRATE = 1.3
 local MAX_BIRTHRATE = 1.8
@@ -36,7 +35,7 @@ local MIN_SPEED = 15
 
 local CUTOFF_COEFF = 4
 
-local HEIGHTS = { 3800, 4200, 4800, 5200, 5760, 5900, 6000, 6100, 6200, 6800, 7500, 7900 }
+local HEIGHTS = { 5200, 5760, 5900, 6000, 6100, 6200, 6800, 7500, 7900 }
 
 local SIZES = {
 	["small"] = { 546, 600, 760, 850, 923, 1200, 1350 },
@@ -274,7 +273,7 @@ local function deployEmitter(particleSystem, size)
 
 	controller.emitterWidth = effectSize
 	controller.emitterHeight = effectSize
-	controller.emitterDepth = math.random(MIN_DEPTH, MAX_DEPTH)
+	controller.emitterDepth = DEPTHS[math.random(#DEPTHS)]
 
 	local initialSize = SIZES[size][math.random(#SIZES[size])]
 	controller.initialSize = initialSize
