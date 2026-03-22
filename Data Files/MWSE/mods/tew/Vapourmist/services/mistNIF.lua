@@ -87,13 +87,14 @@ end
 local function isAvailable(weather, gameHour)
 	local weatherName = weather.name
 
+	local cell = tes3.getPlayerCell()
+	if not cell then return end
+
 	local cell = tes3.player.cell
 	if not cell then return end
-	if not cell.isOrBehavesAsExterior then return false end
 
-	if config.blockedMist[weatherName] then return false end
-
-	return
+	return not config.blockedMist[weatherName] and
+		cell.isOrBehavesAsExterior and
 		((
 				(gameHour > WtC.sunriseHour - 1 and gameHour < WtC.sunriseHour + 1.5)
 				or
@@ -122,102 +123,57 @@ local function isPlayerClouded()
 		if node and node.name == NAME_MAIN then
 			local emitter = node:getObjectByName(NAME_EMITTER)
 			if not emitter.appCulled then
-				cloudMesh = node
+				mistMesh = node
 				local mp = tes3.mobilePlayer
 				local playerPos = mp.position:copy()
 				local drawDistance = mge.distantLandRenderConfig.drawDistance
-				return playerPos:distance(cloudMesh.translation:copy()) < (getCutoffDistance(drawDistance))
+				return playerPos:distance(mistMesh.translation:copy()) < (getCutoffDistance(drawDistance))
 			end
 		end
 	end
 end
 
 
--- Table logic
-
-local function addToTracker(mist)
-	safeAddToTable(mist, tracker)
-	debugLog("Mist added to tracker.")
-end
-
-local function removeFromTracker(mist)
-	local m = safeGetFromTable(mist, tracker)
-	if m then
-		tracker[mist] = nil
-		debugLog("Mist removed from tracker.")
-	end
-end
-
-local function addToRemoveQueue(mist)
-	safeAddToTable(mist, removeQueue)
-	debugLog("Mist added to removal queue.")
-end
-
-local function removeFromRemoveQueue(mist)
-	local m = safeGetFromTable(mist, removeQueue)
-	if m then
-		removeQueue[mist] = nil
-		debugLog("Mist removed removal queue.")
-	end
-end
-
-local function addToAppCulledTracker(mist)
-	safeAddToTable(mist, appCulledTracker)
-	debugLog("Mist added to appCulled tracker.")
-end
-
-local function removeFromAppCulledTracker(mist)
-	local m = safeGetFromTable(mist, appCulledTracker)
-	if m then
-		appCulledTracker[mist] = nil
-		debugLog("Mist removed from appCulled tracker.")
-	end
-end
-
 -- Hide/show logic
 
-local function detach(vfxRoot, node)
-	removeFromAppCulledTracker(node)
+local function detach(node)
+	local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
 	vfxRoot:detachChild(node)
-	debugLog("Mist detached.")
-	removeFromRemoveQueue(node)
-	removeFromTracker(node)
+	debugLog("Cloud detached.")
 end
 
 function mistNIF.detachAll()
-	debugLog("Detaching all mist.")
+	debugLog("Detaching all clouds...")
 	local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
 	for _, node in pairs(vfxRoot.children) do
 		if node and node.name == NAME_MAIN then
-			detach(vfxRoot, node)
+			detach(node)
 		end
 	end
+	debugLog("All clouds detached.")
 end
 
+local function detachAppCulled(state)
+	debugLog("Detaching clouds with appCulled state: " .. tostring(state))
+	local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
+	for _, node in pairs(vfxRoot.children) do
+		if node and node.name == NAME_MAIN then
+			local emitter = node:getObjectByName(NAME_EMITTER)
+			if emitter.appCulled == state then
+				detach(node)
+			end
+		end
+	end
+	debugLog("Clouds with appCulled state: " .. tostring(state) .. " detached.")
+end
+
+---@param node niNode
+---@param bool boolean
 local function switchAppCull(node, bool)
 	local emitter = node:getObjectByName(NAME_EMITTER)
 	if (emitter.appCulled ~= bool) then
 		emitter.appCulled = bool
 		emitter:update()
-	end
-end
-
-function mistNIF.hideAll()
-	local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
-	for _, node in pairs(vfxRoot.children) do
-		if node and node.name == NAME_MAIN then
-			switchAppCull(node, true)
-		end
-	end
-end
-
-function mistNIF.unhideAll()
-	local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
-	for _, node in pairs(vfxRoot.children) do
-		if node and node.name == NAME_MAIN then
-			-- local emitter = node:getObjectByName(NAME_EMITTER)
-			switchAppCull(node, false)
-		end
 	end
 end
 
@@ -230,18 +186,16 @@ local function appCull(node)
 			duration = MAX_LIFESPAN,
 			iterations = 1,
 			persistent = false,
-			callback = function() addToRemoveQueue(node) end,
+			callback = function() detachAppCulled(true) end,
 		}
-		debugLog("Mist appculled.")
-		addToAppCulledTracker(node)
-		removeFromTracker(node)
+		debugLog("Clouds appculled.")
 	else
-		debugLog("Mist already appculled. Skipping.")
+		debugLog("Clouds already appculled. Skipping.")
 	end
 end
 
 local function appCullAll()
-	debugLog("Appculling all mist.")
+	debugLog("Appculling all clouds.")
 	local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
 	for _, node in pairs(vfxRoot.children) do
 		if node and node.name == NAME_MAIN then
@@ -278,34 +232,36 @@ local function getOutputValues()
 	}
 end
 
-local function reColourTable(tab, mistColour)
-	if not tab then return end
-	if table.empty(tab) then return end
-	for mist, _ in pairs(tab) do
-		for _, name in ipairs(NAME_PARTICLE_SYSTEMS) do
-			local particleSystem = mist:getObjectByName(name)
 
-			local controller = particleSystem.controller
-			local colorModifier = controller.particleModifiers
+local function reColourAll(mistColour)
+	local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
+	for _, node in pairs(vfxRoot.children) do
+		if node and node.name == NAME_MAIN then
+			for _, name in ipairs(NAME_PARTICLE_SYSTEMS) do
+				local particleSystem = node:getObjectByName(name)
 
-			for _, key in pairs(colorModifier.colorData.keys) do
-				key.color.r = mistColour.r
-				key.color.g = mistColour.g
-				key.color.b = mistColour.b
+				local controller = particleSystem.controller
+				local colorModifier = controller.particleModifiers
+
+				for _, key in pairs(colorModifier.colorData.keys) do
+					key.color.r = mistColour.r
+					key.color.g = mistColour.g
+					key.color.b = mistColour.b
+				end
+
+				local materialProperty = particleSystem.materialProperty
+				materialProperty.emissive = mistColour
+				materialProperty.specular = mistColour
+				materialProperty.diffuse = mistColour
+				materialProperty.ambient = mistColour
+
+				particleSystem:update()
+				particleSystem:updateProperties()
+				particleSystem:updateEffects()
+				node:update()
+				node:updateProperties()
+				node:updateEffects()
 			end
-
-			local materialProperty = particleSystem.materialProperty
-			materialProperty.emissive = mistColour
-			materialProperty.specular = mistColour
-			materialProperty.diffuse = mistColour
-			materialProperty.ambient = mistColour
-
-			particleSystem:update()
-			particleSystem:updateProperties()
-			particleSystem:updateEffects()
-			mist:update()
-			mist:updateProperties()
-			mist:updateEffects()
 		end
 	end
 end
@@ -314,9 +270,9 @@ local function reColour()
 	local output = getOutputValues()
 	local mistColour = output.colours
 
-	reColourTable(tracker, mistColour)
-	reColourTable(appCulledTracker, mistColour)
+	reColourAll(mistColour)
 end
+
 
 -- NIF values logic
 
@@ -372,17 +328,11 @@ local function addMist()
 
 	local mistNode
 	for _, node in pairs(vfxRoot.children) do
-		if node then
-			if node.name == NAME_MAIN then
-				if not table.find(removeQueue, node) then
-					mistNode = node
-				end
-			end
+		if node and node.name == NAME_MAIN then
+			mistNode = node
 		end
 	end
 	if not mistNode then return end
-
-	addToTracker(mistNode)
 
 	for _, name in ipairs(NAME_PARTICLE_SYSTEMS) do
 		local particleSystem = mistNode:getObjectByName(name)
@@ -449,30 +399,20 @@ end
 
 function mistNIF.conditionCheck()
 	local cell = tes3.getPlayerCell()
-	if not cell then return end
-	if not cell.isOrBehavesAsExterior then return end
+	if not cell or cell and cell.isOrBehavesAsExterior then return end
+
 	local gameHour = WorldC.hour.value
 
 	toWeather = WtC.nextWeather or WtC.currentWeather
 
-	for node, _ in pairs(removeQueue) do
-		local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
-		detach(vfxRoot, node)
-	end
-
-	if not table.empty(tracker) then
-		debugLog("Tracker not empty. Checking distance.")
-		for node, _ in pairs(tracker) do
-			if not isPlayerClouded(node) then
-				debugLog("Found distant mist.")
-				appCull(node)
-			end
-		end
-	else
-		if isAvailable(toWeather, gameHour) then
-			debugLog("Tracker is empty. Adding mist.")
+	if isAvailable(toWeather, gameHour) then
+		if not isPlayerClouded() then
+			debugLog("Player not clouded and conditions eligible. Adding clouds.")
+			mistNIF.detachAll()
 			addMist()
 		end
+	else
+		appCullAll()
 	end
 end
 
@@ -491,14 +431,13 @@ end
 
 -- Register events, timers and reset values --
 function mistNIF.onLoaded()
-	if not tes3.player then return end
+	--if not tes3.player then return end
 	debugLog("Game loaded.")
 	if not recolourRegistered then
 		event.register(tes3.event.enterFrame, reColour)
 		recolourRegistered = true
 	end
 	startTimer()
-	tracker, removeQueue = {}, {}
 	mistNIF.detachAll()
 	mistNIF.conditionCheck()
 end
