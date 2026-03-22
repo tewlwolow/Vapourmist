@@ -66,8 +66,6 @@ local services = {
 			event.register(tes3.event.weatherTransitionStarted, mistNIF.onWeatherChanged)
 			event.register(tes3.event.weatherTransitionFinished, mistNIF.conditionCheck)
 			event.register(tes3.event.uiActivated, mistNIF.onWaitMenu, { filter = "MenuTimePass" })
-			event.register("VAPOURMIST:enteredUnderwater", mistNIF.hideAll)
-			event.register("VAPOURMIST:exitedUnderwater", mistNIF.unhideAll)
 			mistNIF.onLoaded()
 		end,
 		stop = function()
@@ -79,8 +77,6 @@ local services = {
 			event.unregister(tes3.event.weatherTransitionStarted, mistNIF.onWeatherChanged)
 			event.unregister(tes3.event.weatherTransitionFinished, mistNIF.conditionCheck)
 			event.unregister(tes3.event.uiActivated, mistNIF.onWaitMenu, { filter = "MenuTimePass" })
-			event.unregister("VAPOURMIST:enteredUnderwater", mistNIF.hideAll)
-			event.unregister("VAPOURMIST:exitedUnderwater", mistNIF.unhideAll)
 			mistNIF.detachAll()
 		end,
 	},
