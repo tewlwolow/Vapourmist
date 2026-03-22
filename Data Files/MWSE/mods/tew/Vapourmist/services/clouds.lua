@@ -88,8 +88,9 @@ local function getCloudPosition(cell)
 end
 
 local function isAvailable(weather)
-	local cell = tes3.player.cell
+	local cell = tes3.getPlayerCell()
 	if not cell then return end
+
 	local weatherName = weather.name
 	return not config.blockedCloud[weatherName]
 		and config.cloudyWeathers[weatherName]
@@ -381,7 +382,7 @@ end
 
 function clouds.conditionCheck()
 	local cell = tes3.getPlayerCell()
-	if not cell.isOrBehavesAsExterior then return end
+	if not cell or cell and not cell.isOrBehavesAsExterior then return end
 
 	toWeather = WtC.nextWeather or WtC.currentWeather
 
@@ -410,7 +411,7 @@ end
 
 -- Register events, timers and reset values --
 function clouds.onLoaded()
-	if not tes3.player then return end
+	--if not tes3.getPlayerCell() then return end
 	debugLog("Game loaded.")
 	if not recolourRegistered then
 		event.register(tes3.event.enterFrame, reColour)
