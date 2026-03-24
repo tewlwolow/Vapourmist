@@ -90,9 +90,6 @@ local function isAvailable(weather, gameHour)
 	local cell = tes3.getPlayerCell()
 	if not cell then return end
 
-	local cell = tes3.player.cell
-	if not cell then return end
-
 	return not config.blockedMist[weatherName] and
 		cell.isOrBehavesAsExterior and
 		((
@@ -391,15 +388,16 @@ function mistNIF.onWeatherChanged(e)
 			duration = 0.15,
 			callback = function()
 				debugLog("Deploying post-rain mist.")
-				addMist()
+				mistNIF.conditionCheck()
 			end,
 		}
 	end
+	mistNIF.conditionCheck()
 end
 
 function mistNIF.conditionCheck()
 	local cell = tes3.getPlayerCell()
-	if not cell or cell and cell.isOrBehavesAsExterior then return end
+	if not cell or cell and not cell.isOrBehavesAsExterior then return end
 
 	local gameHour = WorldC.hour.value
 
