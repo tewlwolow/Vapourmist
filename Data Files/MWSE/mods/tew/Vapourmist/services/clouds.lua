@@ -25,17 +25,17 @@ local CELL_SIZE = 8192
 local MIN_LIFESPAN = 12
 local MAX_LIFESPAN = 23
 
-local DEPTHS = { 1500, 1800, 2000, 2500, 3000, 3500, 4000 }
+local DEPTHS = { 600, 800, 1200, 1500, 1800, 2000, 2500, 3000, 3500, 4000 }
 
-local MIN_BIRTHRATE = 1.3
-local MAX_BIRTHRATE = 1.8
+local MIN_BIRTHRATE = 1.1
+local MAX_BIRTHRATE = 1.4
 
 local MIN_SPEED = 15
 
 
 local CUTOFF_COEFF = 4
 
-local HEIGHTS = { 5200, 5760, 5900, 6000, 6100, 6200, 6800, 7500, 7900 }
+local HEIGHTS = { 5760, 5900, 6000, 6100, 6200, 6800, 7500, 7900 }
 
 local SIZES = {
 	["small"] = { 546, 600, 760, 850, 923, 1200, 1350 },
@@ -375,7 +375,7 @@ function clouds.onWeatherChanged()
 			callback = clouds.onWeatherChanged,
 		}
 	else
-		addClouds()
+		clouds.conditionCheck()
 	end
 end
 
