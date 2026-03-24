@@ -38,10 +38,10 @@ local radiusFactors = {
 }
 
 local densities = {
-    ["Clear"] = 12,
-    ["Cloudy"] = 13,
-    ["Foggy"] = 12,
-    ["Overcast"] = 11,
+    ["Clear"] = 11,
+    ["Cloudy"] = 12,
+    ["Foggy"] = 13,
+    ["Overcast"] = 12,
     ["Rain"] = 10,
     ["Thunderstorm"] = 10,
     ["Ashstorm"] = 10,
@@ -86,11 +86,11 @@ local function isAvailable(weather, gameHour)
 end
 
 local function getMistColourMix(fogComp, skyComp)
-    return math.lerp(fogComp, skyComp, 0.1)
+    return math.lerp(fogComp, skyComp, 0.2)
 end
 
 local function getModifiedColour(comp)
-    return math.clamp(math.lerp(comp, 1.0, 0.012), 0.03, 0.9)
+    return math.clamp(math.lerp(comp, 1.0, 0.013), 0.03, 0.9)
 end
 
 -- Calculate output colours from current fog colour --
@@ -126,6 +126,7 @@ local function fadeOut()
         return
     end
     mistDensity = mistDensity - (density / STEPS)
+    debugLog("Running fade out. Density: " .. mistDensity)
 end
 
 local function updateMist()
@@ -257,8 +258,12 @@ end
 function mistShader.conditionCheck()
     debugLog("Starting condition check.")
     local cell = tes3.getPlayerCell()
-    if not cell then return end
+    if not cell then
+        debugLog("No cell. Returning")
+        return
+    end
     if not cell.isOrBehavesAsExterior then
+        debugLog("Removing in interior.")
         fogTimer:pause()
         shader.deleteFog(FOG_ID)
     end
@@ -270,7 +275,7 @@ function mistShader.conditionCheck()
 
     if isAvailable(toWeather, gameHour) or postRainMist then
         if not mistDeployed then
-            debugLog("Mist available.")
+            debugLog("Mist available. Deploying.")
             updateMist()
             fogTimer:resume()
             stopTimer(fadeOutTimer)
@@ -286,7 +291,7 @@ function mistShader.conditionCheck()
         end
     else
         if mistDeployed then
-            debugLog("Mist not available.")
+            debugLog("Mist not available. Removing.")
             stopTimer(fadeInTimer)
             fadeOutTimer = timer.start {
                 duration = FADE_DURATION,
