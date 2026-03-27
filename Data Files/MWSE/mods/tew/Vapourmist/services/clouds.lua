@@ -340,7 +340,7 @@ end
 local function waitingCheck()
 	debugLog("Starting waiting check.")
 	local mp = tes3.mobilePlayer
-	if (not mp) or (mp and (mp.waiting or mp.traveling)) then
+	if (not mp) or (mp and (mp.waiting or mp.sleeping or mp.traveling)) then
 		toWeather = WtC.nextWeather or WtC.currentWeather
 		if not (isAvailable(toWeather)) then
 			debugLog("Player waiting or travelling and clouds not available.")

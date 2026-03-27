@@ -185,7 +185,7 @@ local function waitingCheck()
     debugLog("Starting waiting check.")
     local mp = tes3.mobilePlayer
     local gameHour = WorldC.hour.value
-    if (not mp) or (mp and (mp.waiting or mp.traveling)) then
+    if (not mp) or (mp and (mp.waiting or mp.sleeping or mp.traveling)) then
         toWeather = WtC.nextWeather or WtC.currentWeather
         if not isAvailable(toWeather, gameHour) then
             debugLog("Player waiting or travelling and mist not available.")
