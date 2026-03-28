@@ -103,11 +103,11 @@ for serviceName, service in pairs(services) do
 		if config[serviceName] then
 			service.stop()
 			service.init()
-		end
-	else
-		if config[serviceName] then
+		else
 			service.stop()
 		end
+	else
+		service.stop()
 	end
 end
 
