@@ -9,15 +9,16 @@ local FOG_ID = "tew_mist"
 local MAX_DISTANCE = 8192 * 3
 local BASE_DEPTH = 8192 / 8
 local TIMER_DURATION = 0.3
-local FADE_DURATION = 0.01
-local STEPS = 200
+
+local FADE_SECONDS = 4 -- Fade duration in seconds for visual smoothness
+local SIM_FPS = 60     -- Approximate simulate frames per second
 
 local WtC = tes3.worldController.weatherController
 local WorldC = tes3.worldController
 local mistDensity = 0
 local mistDeployed = false
 
-local toWeather, postRainMist, lastRegion, fogTimer, fadeInTimer, fadeOutTimer, fadeOutRemoveTimer
+local toWeather, postRainMist, lastRegion
 
 local wetWeathers = {
     ["Rain"] = true,
@@ -59,6 +60,11 @@ local fogParams = {
     density = mistDensity,
 }
 
+-- Fade parameters
+local fadeTarget = 0
+local fadeStep = 0
+
+-- Stop any running timer
 local function stopTimer(timerVal)
     if timerVal and timerVal.state ~= timer.expired then
         timerVal:pause()
@@ -67,6 +73,7 @@ local function stopTimer(timerVal)
     end
 end
 
+-- Check if mist should appear
 local function isAvailable(weather, gameHour)
     local weatherName = weather.name
 
@@ -93,7 +100,6 @@ local function getModifiedColour(comp)
     return math.clamp(math.lerp(comp, 1.0, 0.013), 0.03, 0.9)
 end
 
--- Calculate output colours from current fog colour --
 local function getOutputValues()
     local currentFogColor = WtC.currentFogColor:copy()
     local currentSkyColor = WtC.currentSkyColor:copy()
@@ -110,106 +116,130 @@ local function getOutputValues()
     )
 end
 
-local function fadeIn()
-    local density = densities[toWeather.name]
-    if mistDensity >= density then
-        mistDensity = density
-        return
-    end
-    mistDensity = mistDensity + (density / STEPS)
+-- Start fade to target density over FADE_SECONDS
+local function startFade(target)
+    fadeTarget = target
+    local steps = FADE_SECONDS * SIM_FPS
+    fadeStep = (target - mistDensity) / steps
 end
 
-local function fadeOut()
-    local density = densities[toWeather.name]
-    if mistDensity <= 0 then
-        mistDensity = 0
-        return
+-- Calculate mist Z using lowest third of statics
+local function getMistPosition(cell)
+    local zValues = {}
+
+    for stat in cell:iterateReferences() do
+        table.insert(zValues, stat.position.z)
     end
-    mistDensity = mistDensity - (density / STEPS)
-    debugLog("Running fade out. Density: " .. mistDensity)
+
+    if #zValues == 0 then
+        return tes3.player.position.z
+    end
+
+    table.sort(zValues)
+
+    local count = math.ceil(#zValues / 3)
+    local sum = 0
+    for i = 1, count do
+        sum = sum + zValues[i]
+    end
+
+    return sum / count
 end
 
+-- Main simulate update
 local function updateMist()
     local player = tes3.player
     if not player then return end
-    if player.cell.isInterior then
+    local cell = player.cell
+    if cell.isInterior then
+        mistDensity = 0
+        shader.deleteFog(FOG_ID)
         return
     end
 
-    local playerPos = tes3.mobilePlayer.position:copy()
+    -- Smooth density update
+    if fadeStep ~= 0 then
+        mistDensity = mistDensity + fadeStep
+        if (fadeStep > 0 and mistDensity >= fadeTarget) or (fadeStep < 0 and mistDensity <= fadeTarget) then
+            mistDensity = fadeTarget
+            fadeStep = 0
+        end
+    end
 
+    local playerPos = tes3.mobilePlayer.position:copy()
     local mistCenter = tes3vector3.new(
-        (playerPos.x),
-        (playerPos.y),
+        playerPos.x,
+        playerPos.y,
         0
+    --getMistPosition(cell)
     )
 
+    fogParams.center = mistCenter
     fogParams.radius.z = BASE_DEPTH * radiusFactors[toWeather.name]
     fogParams.density = mistDensity
-    fogParams.center = mistCenter
     fogParams.color = getOutputValues()
+
     shader.createOrUpdateFog(FOG_ID, fogParams)
 end
 
-function mistShader.onLoaded()
-    if not tes3.player then return end
-
-    fogTimer = timer.start {
-        iterations = -1,
-        duration = 0.01,
-        callback = updateMist,
-        type = timer.game,
-        persist = false,
-    }
-
-    timer.start {
-        duration = TIMER_DURATION,
-        callback = mistShader.conditionCheck,
-        iterations = -1,
-        type = timer.game,
-        persist = false,
-    }
-    mistShader.conditionCheck()
-end
-
-function mistShader.removeMist()
-    stopTimer(fadeOutTimer)
-    stopTimer(fadeOutRemoveTimer)
-    stopTimer(fadeInTimer)
-    mistDensity = 0
-    shader.deleteFog(FOG_ID)
-    debugLog("Mist shader removed.")
-end
-
-local function waitingCheck()
-    debugLog("Starting waiting check.")
-    local mp = tes3.mobilePlayer
-    local gameHour = WorldC.hour.value
-    if (not mp) or (mp and (mp.waiting or mp.sleeping or mp.traveling)) then
-        toWeather = WtC.nextWeather or WtC.currentWeather
-        if not isAvailable(toWeather, gameHour) then
-            debugLog("Player waiting or travelling and mist not available.")
-            mistShader.removeMist()
+-- Deploy mist
+function mistShader.deployMist()
+    if not mistDeployed then
+        mistDeployed = true
+        startFade(densities[toWeather.name])
+        if not mistShader._simulateRegistered then
+            event.register("simulate", updateMist)
+            mistShader._simulateRegistered = true
         end
     end
-    mistShader.conditionCheck()
 end
 
-function mistShader.onWaitMenu(e)
-    local element = e.element
-    element:registerAfter(tes3.uiEvent.destroy, function()
-        waitingCheck()
-    end)
+-- Fade removal
+function mistShader.removeMist()
+    if mistDeployed then
+        mistDeployed = false
+        startFade(0)
+    end
 end
 
+-- Immediate removal (no fade)
+function mistShader.removeMistImmediate()
+    mistDeployed = false
+    mistDensity = 0
+    shader.deleteFog(FOG_ID)
+    fadeStep = 0
+end
+
+-- Condition check
+function mistShader.conditionCheck()
+    debugLog("Starting condition check.")
+
+    local cell = tes3.getPlayerCell()
+    if not cell then return end
+    if not cell.isOrBehavesAsExterior then
+        debugLog("Interior detected, removing mist.")
+        mistShader.removeMist()
+        return
+    end
+
+    toWeather = WtC.nextWeather or WtC.currentWeather
+    local gameHour = WorldC.hour.value
+
+    if isAvailable(toWeather, gameHour) or postRainMist then
+        mistShader.deployMist()
+    else
+        mistShader.removeMist()
+    end
+end
+
+-- Weather change events
 function mistShader.onWeatherChanged(e)
     local fromWeather = e.from
     toWeather = e.to
 
-    if wetWeathers[fromWeather.name] and config.blockedMist[toWeather.name] ~= true then
+    if wetWeathers[fromWeather.name] and not config.blockedMist[toWeather.name] then
         debugLog("Adding post-rain mistShader.")
 
-        -- Slight offset so it makes sense --
         timer.start {
             type = timer.game,
             iterations = 1,
@@ -233,83 +263,55 @@ function mistShader.onWeatherChanged(e)
     end
 end
 
--- function mistShader.immediateCheck()
---     local region = tes3.getPlayerCell().region
-
---     if (lastRegion ~= region) or (not region) then
---         debugLog("Player switched regions.")
---         mistShader.removeMist()
---         lastRegion = region
---         return
---     end
---     lastRegion = region
--- end
-
 function mistShader.onWeatherChangedImmediate(e)
     local gameHour = WorldC.hour.value
     if not isAvailable(e.to, gameHour) then
         debugLog("Weather changed immediate but mist not available.")
-        mistShader.removeMist()
-        return
+        mistShader.removeMistImmediate()
     end
-    -- mistShader.immediateCheck()
 end
 
-function mistShader.conditionCheck()
-    debugLog("Starting condition check.")
-    local cell = tes3.getPlayerCell()
-    if not cell then
-        debugLog("No cell. Returning")
-        return
-    end
-    if not cell.isOrBehavesAsExterior then
-        debugLog("Removing in interior.")
-        fogTimer:pause()
-        shader.deleteFog(FOG_ID)
-    end
-
-    -- mistShader.immediateCheck()
-
-    toWeather = WtC.nextWeather or WtC.currentWeather
+-- Wait menu handling
+local function waitingCheck()
+    debugLog("Starting waiting check.")
+    local mp = tes3.mobilePlayer
     local gameHour = WorldC.hour.value
-
-    if isAvailable(toWeather, gameHour) or postRainMist then
-        if not mistDeployed then
-            debugLog("Mist available. Deploying.")
-            updateMist()
-            fogTimer:resume()
-            stopTimer(fadeOutTimer)
-            stopTimer(fadeOutRemoveTimer)
-            fadeInTimer = timer.start {
-                duration = FADE_DURATION,
-                callback = fadeIn,
-                iterations = STEPS,
-                type = timer.game,
-                persist = false,
-            }
-            mistDeployed = true
-        end
-    else
-        if mistDeployed then
-            debugLog("Mist not available. Removing.")
-            stopTimer(fadeInTimer)
-            fadeOutTimer = timer.start {
-                duration = FADE_DURATION,
-                callback = fadeOut,
-                iterations = STEPS,
-                type = timer.game,
-                persist = false,
-            }
-            fadeOutRemoveTimer = timer.start {
-                duration = (FADE_DURATION * STEPS) + FADE_DURATION,
-                callback = mistShader.removeMist,
-                iterations = 1,
-                type = timer.game,
-                persist = false,
-            }
-            mistDeployed = false
+    if not mp or (mp.waiting or mp.sleeping or mp.traveling) then
+        toWeather = WtC.nextWeather or WtC.currentWeather
+        if not isAvailable(toWeather, gameHour) then
+            debugLog("Player waiting/traveling and mist not available.")
+            mistShader.removeMist()
         end
     end
+    mistShader.conditionCheck()
+end
+
+function mistShader.onWaitMenu(e)
+    local element = e.element
+    element:registerAfter(tes3.uiEvent.destroy, function()
+        waitingCheck()
+    end)
+end
+
+-- Initialization
+function mistShader.onLoaded()
+    if not tes3.player then return end
+
+    -- Register simulate once
+    if not mistShader._simulateRegistered then
+        event.register("simulate", updateMist)
+        mistShader._simulateRegistered = true
+    end
+
+    timer.start {
+        duration = TIMER_DURATION,
+        callback = mistShader.conditionCheck,
+        iterations = -1,
+        type = timer.game,
+        persist = false,
+    }
+
+    mistShader.conditionCheck()
 end
 
 return mistShader
