@@ -22,8 +22,8 @@ local TIMER_DURATION = 0.25
 
 local CELL_SIZE = 8192
 
-local MIN_LIFESPAN = 12
-local MAX_LIFESPAN = 23
+local MIN_LIFESPAN = 7
+local MAX_LIFESPAN = 16
 
 local DEPTHS = { 600, 800, 1200, 1500, 1800, 2000, 2500, 3000, 3500, 4000 }
 
@@ -32,10 +32,17 @@ local MAX_BIRTHRATE = 1.4
 
 local MIN_SPEED = 15
 
+local WHITE = niColor.new(1, 1, 1)
 
 local CUTOFF_COEFF = 4
 
 local HEIGHTS = { 5760, 5900, 6000, 6100, 6200, 6800, 7500, 7900 }
+
+local EMITTER_HEIGHT_COEFFS = {
+	["small"] = 0.5,
+	["medium"] = 0.9,
+	["big"] = 1.3,
+}
 
 local SIZES = {
 	["small"] = { 546, 600, 760, 850, 923, 1200, 1350 },
@@ -230,9 +237,10 @@ local function reColourAll(cloudColour, speed, angle)
 				end
 
 				local materialProperty = particleSystem.materialProperty
+
 				materialProperty.emissive = cloudColour
-				materialProperty.specular = cloudColour
-				materialProperty.diffuse = cloudColour
+				materialProperty.specular = WHITE
+				materialProperty.diffuse = WHITE
 				materialProperty.ambient = cloudColour
 
 				particleSystem:update()
@@ -269,11 +277,14 @@ local function deployEmitter(particleSystem, size)
 	controller.lifespan = lifespan
 	controller.emitStopTime = lifespan * lifespan
 
-	local effectSize = getParticleSystemSize(drawDistance)
+	local effectSize = getParticleSystemSize(drawDistance) * EMITTER_HEIGHT_COEFFS[size]
+	debugLog("Effect size: " .. effectSize)
 
 	controller.emitterWidth = effectSize
 	controller.emitterHeight = effectSize
-	controller.emitterDepth = DEPTHS[math.random(#DEPTHS)]
+	local depth = DEPTHS[math.random(#DEPTHS)] * EMITTER_HEIGHT_COEFFS[size]
+	controller.emitterDepth = depth
+	debugLog("Emitter depth: " .. depth)
 
 	local initialSize = SIZES[size][math.random(#SIZES[size])]
 	controller.initialSize = initialSize
