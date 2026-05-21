@@ -11,7 +11,6 @@ local BASE_DEPTH = 8192 / 8
 local TIMER_DURATION = 0.3
 
 local FADE_SECONDS = 4 -- Fade duration in seconds for visual smoothness
-local SIM_FPS = 60     -- Approximate simulate frames per second
 
 local WtC = tes3.worldController.weatherController
 local WorldC = tes3.worldController
@@ -61,8 +60,11 @@ local fogParams = {
 }
 
 -- Fade parameters
+local fadeStart = 0
 local fadeTarget = 0
-local fadeStep = 0
+local fadeElapsed = 0
+local fadeDuration = FADE_SECONDS
+local isFading = false
 
 -- Stop any running timer
 local function stopTimer(timerVal)
@@ -77,15 +79,16 @@ end
 local function isAvailable(weather, gameHour)
     local weatherName = weather.name
 
-    if config.blockedMist[weatherName] then return false end
+    if config.blockedMist[weatherName] then
+        return false
+    end
 
     return
         ((
                 (gameHour > WtC.sunriseHour - 1 and gameHour < WtC.sunriseHour + 1.5)
                 or
                 (gameHour >= WtC.sunsetHour - 0.4 and gameHour < WtC.sunsetHour + 2))
-            and not
-            wetWeathers[weatherName])
+            and not wetWeathers[weatherName])
         or
         (
             config.mistyWeathers[weatherName]
@@ -103,6 +106,7 @@ end
 local function getOutputValues()
     local currentFogColor = WtC.currentFogColor:copy()
     local currentSkyColor = WtC.currentSkyColor:copy()
+
     local weatherColour = {
         r = getMistColourMix(currentFogColor.r, currentSkyColor.r),
         g = getMistColourMix(currentFogColor.g, currentSkyColor.g),
@@ -116,11 +120,16 @@ local function getOutputValues()
     )
 end
 
--- Start fade to target density over FADE_SECONDS
+-- Start fade to target density
 local function startFade(target)
+    if fadeTarget == target and isFading then
+        return
+    end
+
+    fadeStart = mistDensity
     fadeTarget = target
-    local steps = FADE_SECONDS * SIM_FPS
-    fadeStep = (target - mistDensity) / steps
+    fadeElapsed = 0
+    isFading = true
 end
 
 -- Calculate mist Z using lowest third of statics
@@ -139,6 +148,7 @@ local function getMistPosition(cell)
 
     local count = math.ceil(#zValues / 3)
     local sum = 0
+
     for i = 1, count do
         sum = sum + zValues[i]
     end
@@ -147,10 +157,14 @@ local function getMistPosition(cell)
 end
 
 -- Main simulate update
-local function updateMist()
+local function updateMist(e)
     local player = tes3.player
-    if not player then return end
+    if not player then
+        return
+    end
+
     local cell = player.cell
+
     if cell.isInterior then
         mistDensity = 0
         shader.deleteFog(FOG_ID)
@@ -158,24 +172,43 @@ local function updateMist()
     end
 
     -- Smooth density update
-    if fadeStep ~= 0 then
-        mistDensity = mistDensity + fadeStep
-        if (fadeStep > 0 and mistDensity >= fadeTarget) or (fadeStep < 0 and mistDensity <= fadeTarget) then
+    if isFading then
+        fadeElapsed = fadeElapsed + e.delta
+
+        debugLog("fadeElapsed: " .. fadeElapsed)
+
+        local progress = math.clamp(fadeElapsed / fadeDuration, 0, 1)
+
+        debugLog("progress: " .. progress)
+
+        mistDensity = math.lerp(fadeStart, fadeTarget, progress)
+
+        debugLog("mistDensity: " .. mistDensity)
+
+        if progress >= 1 then
             mistDensity = fadeTarget
-            fadeStep = 0
+            isFading = false
+
+            if mistDensity <= 0.001 then
+                shader.deleteFog(FOG_ID)
+                return
+            end
         end
     end
 
     local playerPos = tes3.mobilePlayer.position:copy()
+
     local mistCenter = tes3vector3.new(
         playerPos.x,
         playerPos.y,
         0
-    --getMistPosition(cell)
+    -- getMistPosition(cell)
     )
 
+    local currentWeather = toWeather or WtC.currentWeather
+
     fogParams.center = mistCenter
-    fogParams.radius.z = BASE_DEPTH * radiusFactors[toWeather.name]
+    fogParams.radius.z = BASE_DEPTH * radiusFactors[currentWeather.name]
     fogParams.density = mistDensity
     fogParams.color = getOutputValues()
 
@@ -184,30 +217,43 @@ end
 
 -- Deploy mist
 function mistShader.deployMist()
-    if not mistDeployed then
-        mistDeployed = true
-        startFade(densities[toWeather.name])
-        if not mistShader._simulateRegistered then
-            event.register("simulate", updateMist)
-            mistShader._simulateRegistered = true
-        end
+    local targetDensity = densities[toWeather.name]
+
+    if mistDeployed and fadeTarget == targetDensity then
+        return
+    end
+
+    mistDeployed = true
+
+    startFade(targetDensity)
+
+    if not mistShader._simulateRegistered then
+        event.register("simulate", updateMist)
+        mistShader._simulateRegistered = true
     end
 end
 
 -- Fade removal
 function mistShader.removeMist()
-    if mistDeployed then
-        mistDeployed = false
-        startFade(0)
+    if not mistDeployed and fadeTarget == 0 then
+        return
     end
+
+    mistDeployed = false
+    startFade(0)
 end
 
 -- Immediate removal (no fade)
 function mistShader.removeMistImmediate()
     mistDeployed = false
     mistDensity = 0
+    isFading = false
+    fadeElapsed = 0
+    fadeTarget = 0
+
     shader.deleteFog(FOG_ID)
-    fadeStep = 0
+
+    debugLog("Mist shader removed immediately")
 end
 
 -- Condition check
@@ -215,7 +261,11 @@ function mistShader.conditionCheck()
     debugLog("Starting condition check.")
 
     local cell = tes3.getPlayerCell()
-    if not cell then return end
+
+    if not cell then
+        return
+    end
+
     if not cell.isOrBehavesAsExterior then
         debugLog("Interior detected, removing mist.")
         mistShader.removeMist()
@@ -223,11 +273,14 @@ function mistShader.conditionCheck()
     end
 
     toWeather = WtC.nextWeather or WtC.currentWeather
+
     local gameHour = WorldC.hour.value
 
     if isAvailable(toWeather, gameHour) or postRainMist then
+        debugLog("Deploying mist")
         mistShader.deployMist()
     else
+        debugLog("Removing mist")
         mistShader.removeMist()
     end
 end
@@ -238,7 +291,7 @@ function mistShader.onWeatherChanged(e)
     toWeather = e.to
 
     if wetWeathers[fromWeather.name] and not config.blockedMist[toWeather.name] then
-        debugLog("Adding post-rain mistShader.")
+        debugLog("Adding post-rain mist.")
 
         timer.start {
             type = timer.game,
@@ -247,7 +300,7 @@ function mistShader.onWeatherChanged(e)
             callback = function()
                 postRainMist = true
                 mistDensity = 0
-                updateMist()
+                updateMist({ delta = 0 })
                 mistShader.conditionCheck()
             end,
         }
@@ -265,6 +318,7 @@ end
 
 function mistShader.onWeatherChangedImmediate(e)
     local gameHour = WorldC.hour.value
+
     if not isAvailable(e.to, gameHour) then
         debugLog("Weather changed immediate but mist not available.")
         mistShader.removeMistImmediate()
@@ -274,20 +328,25 @@ end
 -- Wait menu handling
 local function waitingCheck()
     debugLog("Starting waiting check.")
+
     local mp = tes3.mobilePlayer
     local gameHour = WorldC.hour.value
+
     if not mp or (mp.waiting or mp.sleeping or mp.traveling) then
         toWeather = WtC.nextWeather or WtC.currentWeather
+
         if not isAvailable(toWeather, gameHour) then
             debugLog("Player waiting/traveling and mist not available.")
             mistShader.removeMist()
         end
     end
+
     mistShader.conditionCheck()
 end
 
 function mistShader.onWaitMenu(e)
     local element = e.element
+
     element:registerAfter(tes3.uiEvent.destroy, function()
         waitingCheck()
     end)
@@ -295,7 +354,9 @@ end
 
 -- Initialization
 function mistShader.onLoaded()
-    if not tes3.player then return end
+    if not tes3.player then
+        return
+    end
 
     -- Register simulate once
     if not mistShader._simulateRegistered then
