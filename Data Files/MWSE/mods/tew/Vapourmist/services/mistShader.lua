@@ -308,7 +308,7 @@ function mistShader.onWeatherChanged(e)
         timer.start {
             type = timer.game,
             iterations = 1,
-            duration = 1,
+            duration = 0.7,
             callback = function()
                 postRainMist = false
             end,
