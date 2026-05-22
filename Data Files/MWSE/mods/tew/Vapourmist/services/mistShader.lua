@@ -1,3 +1,5 @@
+-- TODO: figure out height fog in mountains to fill the valleys etc.
+
 -- Imports
 local shader = require("tew.Vapourmist.components.shader")
 local util = require("tew.Vapourmist.components.util")
@@ -20,7 +22,7 @@ local currentRadiusZ = BASE_DEPTH
 
 local mistDeployed = false
 
-local toWeather, postRainMist, lastRegion
+local toWeather, postRainMist
 
 local wetWeathers = {
     ["Rain"] = true,
@@ -29,7 +31,7 @@ local wetWeathers = {
 
 local radiusFactors = {
     ["Clear"] = 1.2,
-    ["Cloudy"] = 1.3,
+    ["Cloudy"] = 1.2,
     ["Foggy"] = 1,
     ["Overcast"] = 1.2,
     ["Rain"] = 1,
@@ -80,17 +82,6 @@ local fadeElapsed = 0
 local fadeDuration = FADE_SECONDS
 
 local isFading = false
-
--- Stop any running timer
-
-local function stopTimer(timerVal)
-    if timerVal and timerVal.state ~= timer.expired then
-        timerVal:pause()
-        timerVal:cancel()
-
-        debugLog("Timer paused and cancelled.")
-    end
-end
 
 -- Check if mist should appear
 
