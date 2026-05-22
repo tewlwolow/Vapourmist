@@ -22,13 +22,13 @@ local TIMER_DURATION = 0.25
 
 local CELL_SIZE = 8192
 
-local MIN_LIFESPAN = 7
-local MAX_LIFESPAN = 16
+local MIN_LIFESPAN = 18
+local MAX_LIFESPAN = 28
 
 local DEPTHS = { 600, 800, 1200, 1500, 1800, 2000, 2500, 3000, 3500, 4000 }
 
-local MIN_BIRTHRATE = 1.1
-local MAX_BIRTHRATE = 1.4
+local MIN_BIRTHRATE = 0.8
+local MAX_BIRTHRATE = 1.6
 
 local MIN_SPEED = 15
 
@@ -36,7 +36,7 @@ local WHITE = niColor.new(1, 1, 1)
 
 local CUTOFF_COEFF = 4
 
-local HEIGHTS = { 5760, 5900, 6000, 6100, 6200, 6800, 7500, 7900 }
+local HEIGHTS = { 5600, 5900, 6300, 6200, 6800, 7100, 7500, 7900, 8200, 8500, 9200, 9800 }
 
 local EMITTER_HEIGHT_COEFFS = {
 	["small"] = 0.5,
@@ -45,9 +45,9 @@ local EMITTER_HEIGHT_COEFFS = {
 }
 
 local SIZES = {
-	["small"] = { 546, 600, 760, 850, 923, 1200, 1350 },
-	["medium"] = { 1740, 1917, 2000, 2250, 2800 },
-	["big"] = { 2915, 3156, 3400, 3700, 4002 },
+	["small"] = { 546, 600, 760, 850, 923, 1200, 1350, 1500 },
+	["medium"] = { 1600, 1740, 1917, 2000, 2250, 2800, 3000 },
+	["big"] = { 3000, 3200, 3400, 3700, 4000, 4200, 4500 },
 }
 
 ---@type niNode
@@ -239,8 +239,8 @@ local function reColourAll(cloudColour, speed, angle)
 				local materialProperty = particleSystem.materialProperty
 
 				materialProperty.emissive = cloudColour
-				materialProperty.specular = WHITE
-				materialProperty.diffuse = WHITE
+				materialProperty.specular = cloudColour
+				materialProperty.diffuse = cloudColour
 				materialProperty.ambient = cloudColour
 
 				particleSystem:update()
