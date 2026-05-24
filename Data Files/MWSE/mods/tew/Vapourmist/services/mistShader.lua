@@ -340,8 +340,7 @@ end
 -- Deploy mist
 
 function mistShader.deployMist()
-    local targetDensity =
-        densities[toWeather.name]
+    local targetDensity = densities[toWeather.name]
 
     if
         mistDeployed
@@ -453,11 +452,11 @@ function mistShader.conditionCheck(options)
         isAvailable(toWeather, gameHour)
         or postRainMist
     then
-        debugLog("Deploying mist")
+        debugLog("Deploying mist...")
 
         mistShader.deployMist()
     else
-        debugLog("Removing mist")
+        debugLog("Removing mist...")
 
         mistShader.removeMist()
     end
@@ -584,13 +583,20 @@ function mistShader.onLoaded()
 end
 
 function mistShader.removeRegisters()
-    if recolourRegistered then
-        event.unregister(tes3.event.simulate, updateMist)
-    end
+
 end
 
-function mistShader.removeTimers()
+function mistShader.cleanup()
     util.removeTimers({ conditionTimer, deployRainMistTimer, removeRainMistTimer })
+    if recolourRegistered then
+        event.unregister(tes3.event.simulate, updateMist)
+        recolourRegistered = false
+    end
+    mistDensity = 0
+    currentRadiusZ = BASE_DEPTH
+    mistDeployed = false
+    toWeather, postRainMist = nil, nil
+    conditionTimer, deployRainMistTimer, removeRainMistTimer = nil, nil, nil
 end
 
 return mistShader

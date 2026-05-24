@@ -433,14 +433,12 @@ function clouds.onLoaded()
 	clouds.conditionCheck()
 end
 
-function clouds.removeRegisters()
+function clouds.cleanup()
+	util.removeTimers({ conditionTimer, appCullTimer, delayTimer })
 	if recolourRegistered then
 		event.unregister(tes3.event.simulate, reColour)
 	end
-end
-
-function clouds.removeTimers()
-	util.removeTimers({ conditionTimer, appCullTimer, delayTimer })
+	conditionTimer, delayTimer, appCullTimer = nil, nil, nil
 end
 
 return clouds

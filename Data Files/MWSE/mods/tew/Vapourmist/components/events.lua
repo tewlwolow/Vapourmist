@@ -27,9 +27,8 @@ local services = {
 			event.unregister(tes3.event.weatherTransitionStarted, clouds.onWeatherChanged)
 			event.unregister(tes3.event.weatherTransitionFinished, clouds.onWeatherChanged)
 			event.unregister(tes3.event.uiActivated, clouds.onWaitMenu, { filter = "MenuTimePass" })
-			clouds.removeRegisters()
-			clouds.removeTimers()
 			clouds.detachAll()
+			clouds.cleanup()
 		end,
 	},
 	mistShader = {
@@ -57,9 +56,8 @@ local services = {
 			event.unregister(tes3.event.uiActivated, mistShader.onWaitMenu, { filter = "MenuTimePass" })
 			event.unregister("VAPOURMIST:enteredUnderwater", shader.disableFog)
 			event.unregister("VAPOURMIST:exitedUnderwater", shader.enableFog)
-			mistShader.removeRegisters()
-			mistShader.removeTimers()
 			mistShader.removeMistImmediate()
+			mistShader.cleanup()
 		end,
 	},
 	mistNIF = {
@@ -83,9 +81,8 @@ local services = {
 			event.unregister(tes3.event.weatherTransitionStarted, mistNIF.onWeatherChanged)
 			event.unregister(tes3.event.weatherTransitionFinished, mistNIF.conditionCheck)
 			event.unregister(tes3.event.uiActivated, mistNIF.onWaitMenu, { filter = "MenuTimePass" })
-			mistNIF.removeRegisters()
-			mistNIF.removeTimers()
 			mistNIF.detachAll()
+			mistNIF.cleanup()
 		end,
 	},
 	interior = {

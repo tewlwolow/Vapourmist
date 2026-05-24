@@ -14,7 +14,7 @@ local debugLog = util.debugLog
 ---@module 'tew.Vapourmist.config'
 local config = require("tew.Vapourmist.config")
 
-local conditionTimer, delayedTimer, appCullTimer
+local conditionTimer, delayTimer, appCullTimer
 
 -->>>---------------------------------------------------------------------------------------------<<<--
 -- Constants
@@ -441,14 +441,14 @@ function mistNIF.onLoaded()
 	mistNIF.conditionCheck()
 end
 
-function mistNIF.removeRegisters()
+function mistNIF.cleanup()
+	util.removeTimers({ conditionTimer, appCullTimer, delayTimer })
 	if recolourRegistered then
 		event.unregister(tes3.event.simulate, reColour)
+		recolourRegistered = false
 	end
-end
-
-function mistNIF.removeTimers()
-	util.removeTimers({ conditionTimer, appCullTimer, delayTimer })
+	toWeather = nil
+	conditionTimer, delayTimer, appCullTimer = nil, nil, nil
 end
 
 return mistNIF
