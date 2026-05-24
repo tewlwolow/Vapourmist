@@ -14,6 +14,7 @@ local debugLog = util.debugLog
 ---@module 'tew.Vapourmist.config'
 local config = require("tew.Vapourmist.config")
 
+local conditionTimer, delayTimer, appCullTimer
 
 -->>>---------------------------------------------------------------------------------------------<<<--
 -- Constants
@@ -32,7 +33,7 @@ local MAX_BIRTHRATE = 1.6
 
 local MIN_SPEED = 15
 
-local WHITE = niColor.new(1, 1, 1)
+-- local WHITE = niColor.new(1, 1, 1)
 
 local CUTOFF_COEFF = 4
 
@@ -177,7 +178,7 @@ local function appCull(node)
 	local emitter = node:getObjectByName(NAME_EMITTER)
 	if not (emitter.appCulled) then
 		switchAppCull(node, true)
-		timer.start {
+		appCullTimer = timer.start {
 			type = timer.simulate,
 			duration = MAX_LIFESPAN,
 			iterations = 1,
@@ -379,7 +380,7 @@ function clouds.onWeatherChanged()
 
 	if WtC.nextWeather and WtC.transitionScalar < 0.6 then
 		debugLog("Weather transition in progress. Adding clouds in a bit.")
-		timer.start {
+		delayTimer = timer.start {
 			type = timer.game,
 			iterations = 1,
 			duration = 0.2,
@@ -410,7 +411,7 @@ end
 -- Time and event logic
 
 local function startTimer()
-	timer.start {
+	conditionTimer = timer.start {
 		duration = TIMER_DURATION,
 		callback = clouds.conditionCheck,
 		iterations = -1,
@@ -424,12 +425,22 @@ function clouds.onLoaded()
 	--if not tes3.getPlayerCell() then return end
 	debugLog("Game loaded.")
 	if not recolourRegistered then
-		event.register(tes3.event.enterFrame, reColour)
+		event.register(tes3.event.simulate, reColour)
 		recolourRegistered = true
 	end
 	startTimer()
 	clouds.detachAll()
 	clouds.conditionCheck()
+end
+
+function clouds.removeRegisters()
+	if recolourRegistered then
+		event.unregister(tes3.event.simulate, reColour)
+	end
+end
+
+function clouds.removeTimers()
+	util.removeTimers({ conditionTimer, appCullTimer, delayTimer })
 end
 
 return clouds

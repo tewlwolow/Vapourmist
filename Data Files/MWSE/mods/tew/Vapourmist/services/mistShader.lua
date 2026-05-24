@@ -1,4 +1,4 @@
--- TODO: figure out height fog in mountains to fill the valleys etc.
+local mistShader = {}
 
 -- Imports
 local shader = require("tew.Vapourmist.components.shader")
@@ -23,6 +23,10 @@ local currentRadiusZ = BASE_DEPTH
 local mistDeployed = false
 
 local toWeather, postRainMist
+
+local recolourRegistered
+
+local conditionTimer, deployRainMistTimer, removeRainMistTimer
 
 local wetWeathers = {
     ["Rain"] = true,
@@ -54,8 +58,6 @@ local densities = {
     ["Snow"] = 10,
     ["Blizzard"] = 10,
 }
-
-local mistShader = {}
 
 local fogParams = {
     color = tes3vector3.new(),
@@ -236,7 +238,7 @@ local function updateMist(e)
     if isFading then
         fadeElapsed = fadeElapsed + e.delta
 
-        debugLog("fadeElapsed: " .. fadeElapsed)
+        -- debugLog("fadeElapsed: " .. fadeElapsed)
 
         local progress =
             math.clamp(
@@ -245,7 +247,7 @@ local function updateMist(e)
                 1
             )
 
-        debugLog("progress: " .. progress)
+        -- debugLog("progress: " .. progress)
 
         mistDensity =
             math.lerp(
@@ -261,12 +263,12 @@ local function updateMist(e)
                 progress
             )
 
-        debugLog("mistDensity: " .. mistDensity)
+        -- debugLog("mistDensity: " .. mistDensity)
 
-        debugLog(
-            "currentRadiusZ: "
-            .. currentRadiusZ
-        )
+        -- debugLog(
+        --     "currentRadiusZ: "
+        --     .. currentRadiusZ
+        -- )
 
         if progress >= 1 then
             mistDensity = fadeTarget
@@ -294,8 +296,8 @@ local function updateMist(e)
     -- getMistPosition(cell)
     )
 
-    local currentWeather =
-        toWeather or WtC.currentWeather
+    -- local currentWeather =
+    --     toWeather or WtC.currentWeather
 
     fogParams.center = mistCenter
 
@@ -305,29 +307,29 @@ local function updateMist(e)
 
     fogParams.color = getOutputValues()
 
-    debugLog(
-        "Weather: "
-        .. tostring(
-            currentWeather and currentWeather.name
-        )
-    )
+    -- debugLog(
+    --     "Weather: "
+    --     .. tostring(
+    --         currentWeather and currentWeather.name
+    --     )
+    -- )
 
-    debugLog(
-        "Radius factor: "
-        .. tostring(
-            radiusFactors[currentWeather.name]
-        )
-    )
+    -- debugLog(
+    --     "Radius factor: "
+    --     .. tostring(
+    --         radiusFactors[currentWeather.name]
+    --     )
+    -- )
 
-    debugLog(
-        "Current radius Z: "
-        .. tostring(currentRadiusZ)
-    )
+    -- debugLog(
+    --     "Current radius Z: "
+    --     .. tostring(currentRadiusZ)
+    -- )
 
-    debugLog(
-        "Density: "
-        .. tostring(mistDensity)
-    )
+    -- debugLog(
+    --     "Density: "
+    --     .. tostring(mistDensity)
+    -- )
 
     shader.createOrUpdateFog(
         FOG_ID,
@@ -355,10 +357,10 @@ function mistShader.deployMist()
         radiusFactors[toWeather.name] or 1
     )
 
-    if not mistShader._simulateRegistered then
-        event.register("simulate", updateMist)
+    if not recolourRegistered then
+        event.register(tes3.event.simulate, updateMist)
 
-        mistShader._simulateRegistered = true
+        recolourRegistered = true
     end
 end
 
@@ -474,7 +476,7 @@ function mistShader.onWeatherChanged(e)
     then
         debugLog("Adding post-rain mist.")
 
-        timer.start {
+        deployRainMistTimer = timer.start {
             type = timer.game,
             iterations = 1,
             duration = 0.06,
@@ -490,7 +492,7 @@ function mistShader.onWeatherChanged(e)
             end,
         }
 
-        timer.start {
+        removeRainMistTimer = timer.start {
             type = timer.game,
             iterations = 1,
             duration = 0.6,
@@ -564,20 +566,31 @@ function mistShader.onLoaded()
         return
     end
 
-    if not mistShader._simulateRegistered then
-        event.register("simulate", updateMist)
+    if not recolourRegistered then
+        event.register(tes3.event.simulate, updateMist)
 
-        mistShader._simulateRegistered = true
+        recolourRegistered = true
     end
 
-    timer.start {
+    conditionTimer = timer.start {
         duration = TIMER_DURATION,
         callback = mistShader.conditionCheck,
         iterations = -1,
         type = timer.game,
-        persist = false }
+        persist = false,
+    }
 
     mistShader.conditionCheck()
+end
+
+function mistShader.removeRegisters()
+    if recolourRegistered then
+        event.unregister(tes3.event.simulate, updateMist)
+    end
+end
+
+function mistShader.removeTimers()
+    util.removeTimers({ conditionTimer, deployRainMistTimer, removeRainMistTimer })
 end
 
 return mistShader

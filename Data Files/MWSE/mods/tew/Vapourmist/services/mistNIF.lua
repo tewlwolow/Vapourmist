@@ -14,6 +14,7 @@ local debugLog = util.debugLog
 ---@module 'tew.Vapourmist.config'
 local config = require("tew.Vapourmist.config")
 
+local conditionTimer, delayedTimer, appCullTimer
 
 -->>>---------------------------------------------------------------------------------------------<<<--
 -- Constants
@@ -178,7 +179,7 @@ local function appCull(node)
 	local emitter = node:getObjectByName(NAME_EMITTER)
 	if not (emitter.appCulled) then
 		switchAppCull(node, true)
-		timer.start {
+		appCullTimer = timer.start {
 			type = timer.simulate,
 			duration = MAX_LIFESPAN,
 			iterations = 1,
@@ -382,7 +383,7 @@ function mistNIF.onWeatherChanged(e)
 	if wetWeathers[fromWeather.name] and config.blockedMist[toWeather.name] ~= true then
 		debugLog("Setting timer for post-rain mist.")
 		-- Slight offset so it makes sense --
-		timer.start {
+		delayTimer = timer.start {
 			type = timer.game,
 			iterations = 1,
 			duration = 0.15,
@@ -417,7 +418,7 @@ end
 -- Time and event logic
 
 local function startTimer()
-	timer.start {
+	conditionTimer = timer.start {
 		duration = TIMER_DURATION,
 		callback = mistNIF.conditionCheck,
 		iterations = -1,
@@ -432,12 +433,22 @@ function mistNIF.onLoaded()
 	--if not tes3.player then return end
 	debugLog("Game loaded.")
 	if not recolourRegistered then
-		event.register(tes3.event.enterFrame, reColour)
+		event.register(tes3.event.simulate, reColour)
 		recolourRegistered = true
 	end
 	startTimer()
 	mistNIF.detachAll()
 	mistNIF.conditionCheck()
+end
+
+function mistNIF.removeRegisters()
+	if recolourRegistered then
+		event.unregister(tes3.event.simulate, reColour)
+	end
+end
+
+function mistNIF.removeTimers()
+	util.removeTimers({ conditionTimer, appCullTimer, delayTimer })
 end
 
 return mistNIF

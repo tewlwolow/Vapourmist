@@ -1,7 +1,9 @@
 -- Events declarations
 -->>>---------------------------------------------------------------------------------------------<<<--
 
-local config = require("tew.Vapourmist.config")
+local config   = require("tew.Vapourmist.config")
+local util     = require("tew.Vapourmist.components.util")
+local debugLog = util.debugLog
 
 local services = {
 	clouds = {
@@ -25,6 +27,8 @@ local services = {
 			event.unregister(tes3.event.weatherTransitionStarted, clouds.onWeatherChanged)
 			event.unregister(tes3.event.weatherTransitionFinished, clouds.onWeatherChanged)
 			event.unregister(tes3.event.uiActivated, clouds.onWaitMenu, { filter = "MenuTimePass" })
+			clouds.removeRegisters()
+			clouds.removeTimers()
 			clouds.detachAll()
 		end,
 	},
@@ -53,7 +57,9 @@ local services = {
 			event.unregister(tes3.event.uiActivated, mistShader.onWaitMenu, { filter = "MenuTimePass" })
 			event.unregister("VAPOURMIST:enteredUnderwater", shader.disableFog)
 			event.unregister("VAPOURMIST:exitedUnderwater", shader.enableFog)
-			mistShader.removeMist()
+			mistShader.removeRegisters()
+			mistShader.removeTimers()
+			mistShader.removeMistImmediate()
 		end,
 	},
 	mistNIF = {
@@ -77,6 +83,8 @@ local services = {
 			event.unregister(tes3.event.weatherTransitionStarted, mistNIF.onWeatherChanged)
 			event.unregister(tes3.event.weatherTransitionFinished, mistNIF.conditionCheck)
 			event.unregister(tes3.event.uiActivated, mistNIF.onWaitMenu, { filter = "MenuTimePass" })
+			mistNIF.removeRegisters()
+			mistNIF.removeTimers()
 			mistNIF.detachAll()
 		end,
 	},
@@ -101,12 +109,15 @@ local services = {
 for serviceName, service in pairs(services) do
 	if config.modEnabled then
 		if config[serviceName] then
+			debugLog("Initialising service: [" .. serviceName .. "]")
 			service.stop()
 			service.init()
 		else
+			debugLog("Stopping service: [" .. serviceName .. "]")
 			service.stop()
 		end
 	else
+		debugLog("Mod disabled - stopping services.")
 		service.stop()
 	end
 end
