@@ -137,22 +137,25 @@ end
 local function detach(node)
 	local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
 	vfxRoot:detachChild(node)
-	debugLog("Cloud detached.")
+	debugLog("Mist detached.")
 end
 
 function mistNIF.detachAll()
-	debugLog("Detaching all clouds...")
 	local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
+	if not vfxRoot then return end
+	debugLog("Detaching all mist...")
 	for _, node in pairs(vfxRoot.children) do
 		if node and node.name == NAME_MAIN then
 			detach(node)
 		end
 	end
-	debugLog("All clouds detached.")
+	debugLog("All mist detached.")
 end
 
 local function detachAppCulled(state)
-	debugLog("Detaching clouds with appCulled state: " .. tostring(state))
+	local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
+	if not vfxRoot then return end
+	debugLog("Detaching mist with appCulled state: " .. tostring(state))
 	local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
 	for _, node in pairs(vfxRoot.children) do
 		if node and node.name == NAME_MAIN then
@@ -162,7 +165,7 @@ local function detachAppCulled(state)
 			end
 		end
 	end
-	debugLog("Clouds with appCulled state: " .. tostring(state) .. " detached.")
+	debugLog("Mist with appCulled state: " .. tostring(state) .. " detached.")
 end
 
 ---@param node niNode
@@ -186,14 +189,14 @@ local function appCull(node)
 			persistent = false,
 			callback = function() detachAppCulled(true) end,
 		}
-		debugLog("Clouds appculled.")
+		debugLog("Mist appculled.")
 	else
-		debugLog("Clouds already appculled. Skipping.")
+		debugLog("Mist already appculled. Skipping.")
 	end
 end
 
 local function appCullAll()
-	debugLog("Appculling all clouds.")
+	debugLog("Appculling all mist.")
 	local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
 	for _, node in pairs(vfxRoot.children) do
 		if node and node.name == NAME_MAIN then
@@ -406,7 +409,7 @@ function mistNIF.conditionCheck()
 
 	if isAvailable(toWeather, gameHour) then
 		if not isPlayerClouded() then
-			debugLog("Player not clouded and conditions eligible. Adding clouds.")
+			debugLog("Player not clouded and conditions eligible. Adding mist.")
 			mistNIF.detachAll()
 			addMist()
 		end
@@ -430,7 +433,7 @@ end
 
 -- Register events, timers and reset values --
 function mistNIF.onLoaded()
-	--if not tes3.player then return end
+	if not tes3.player then return end
 	debugLog("Game loaded.")
 	if not recolourRegistered then
 		event.register(tes3.event.simulate, reColour)
@@ -442,6 +445,7 @@ function mistNIF.onLoaded()
 end
 
 function mistNIF.cleanup()
+	mistNIF.detachAll()
 	util.removeTimers({ conditionTimer, appCullTimer, delayTimer })
 	if recolourRegistered then
 		event.unregister(tes3.event.simulate, reColour)

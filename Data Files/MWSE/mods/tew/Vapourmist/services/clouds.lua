@@ -140,8 +140,9 @@ local function detach(node)
 end
 
 function clouds.detachAll()
-	debugLog("Detaching all clouds...")
 	local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
+	if not vfxRoot then return end
+	debugLog("Detaching all clouds...")
 	for _, node in pairs(vfxRoot.children) do
 		if node and node.name == NAME_MAIN then
 			detach(node)
@@ -151,8 +152,9 @@ function clouds.detachAll()
 end
 
 local function detachAppCulled(state)
-	debugLog("Detaching clouds with appCulled state: " .. tostring(state))
 	local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
+	if not vfxRoot then return end
+	debugLog("Detaching clouds with appCulled state: " .. tostring(state))
 	for _, node in pairs(vfxRoot.children) do
 		if node and node.name == NAME_MAIN then
 			local emitter = node:getObjectByName(NAME_EMITTER)
@@ -422,7 +424,7 @@ end
 
 -- Register events, timers and reset values --
 function clouds.onLoaded()
-	--if not tes3.getPlayerCell() then return end
+	if not tes3.player then return end
 	debugLog("Game loaded.")
 	if not recolourRegistered then
 		event.register(tes3.event.simulate, reColour)
@@ -434,6 +436,7 @@ function clouds.onLoaded()
 end
 
 function clouds.cleanup()
+	clouds.detachAll()
 	util.removeTimers({ conditionTimer, appCullTimer, delayTimer })
 	if recolourRegistered then
 		event.unregister(tes3.event.simulate, reColour)

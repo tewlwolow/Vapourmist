@@ -587,6 +587,7 @@ function mistShader.removeRegisters()
 end
 
 function mistShader.cleanup()
+    mistShader.removeMistImmediate()
     util.removeTimers({ conditionTimer, deployRainMistTimer, removeRainMistTimer })
     if recolourRegistered then
         event.unregister(tes3.event.simulate, updateMist)
