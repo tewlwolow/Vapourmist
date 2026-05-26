@@ -18,7 +18,7 @@ assets = [
 ]
 
 [dependencies.mwse]
-buildnumber = 3150
+buildnumber = 5058
 
 [dependencies.mge-xe]
 version = ">=0.15.0"
