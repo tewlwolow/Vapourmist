@@ -82,7 +82,25 @@ local services = {
 			mistNIF.cleanup()
 		end,
 	},
-	interior = {
+
+	-- TODO: Redo - decouple, combine vtastek's underwater dust with fogbox; interior NIF out
+	interiorShader = {
+		init = function()
+			local interior = require("tew.Vapourmist.services.interior")
+			event.register(tes3.event.cellChanged, interior.onCellChanged, { priority = 500 })
+			event.register("VAPOURMIST:enteredUnderwater", interior.hideAll)
+			event.register("VAPOURMIST:exitedUnderwater", interior.unhideAll)
+			interior.onCellChanged()
+		end,
+		stop = function()
+			local interior = require("tew.Vapourmist.services.interior")
+			event.unregister(tes3.event.cellChanged, interior.onCellChanged, { priority = 500 })
+			event.unregister("VAPOURMIST:enteredUnderwater", interior.hideAll)
+			event.unregister("VAPOURMIST:exitedUnderwater", interior.unhideAll)
+			interior.removeAllFog()
+		end,
+	},
+	interiorNIF = {
 		init = function()
 			local interior = require("tew.Vapourmist.services.interior")
 			event.register(tes3.event.cellChanged, interior.onCellChanged, { priority = 500 })
