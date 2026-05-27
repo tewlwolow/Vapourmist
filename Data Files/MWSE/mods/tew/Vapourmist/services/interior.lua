@@ -98,6 +98,7 @@ local function isAvailable(cell)
 
 	for _, namePattern in ipairs(interiorNames) do
 		if string.find(cell.name:lower(), namePattern) then
+			debugLog("Found valid interior by name: " .. cell.name)
 			return true
 		end
 	end
@@ -108,12 +109,14 @@ local function isAvailable(cell)
 			if string.startswith(stat.object.id:lower(), statName) then
 				count = count + 1
 				if count >= MIN_STAT_COUNT then
+					debugLog("Found valid interior by static count")
 					return true
 				end
 			end
 		end
 	end
 
+	debugLog("Not a valid interior")
 	return false
 end
 
