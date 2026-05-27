@@ -227,9 +227,9 @@ local function updateMist(e)
 
         shader.deleteFog(FOG_ID)
 
-        debugLog(
-            "Cell is interior. Mist shader removed."
-        )
+        -- debugLog(
+        --     "Cell is interior. Mist shader removed."
+        -- )
 
         return
     end
