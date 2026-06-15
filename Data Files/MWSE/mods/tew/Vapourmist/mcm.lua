@@ -86,6 +86,8 @@ weathersPage:createExclusionsPage {
                     for weather, _ in pairs(tes3.weather) do
                         if weather == "thunder" then
                             table.insert(weatherNames, "Thunderstorm")
+                        elseif weather == "ash" then
+                            table.insert(weatherNames, "Ashstorm")
                         else
                             table.insert(weatherNames, weather:sub(1, 1):upper() .. weather:sub(2))
                         end
@@ -121,6 +123,8 @@ weathersPage:createExclusionsPage {
                     for weather, _ in pairs(tes3.weather) do
                         if weather == "thunder" then
                             table.insert(weatherNames, "Thunderstorm")
+                        elseif weather == "ash" then
+                            table.insert(weatherNames, "Ashstorm")
                         else
                             table.insert(weatherNames, weather:sub(1, 1):upper() .. weather:sub(2))
                         end
@@ -161,6 +165,8 @@ blockedPage:createExclusionsPage {
                     for weather, _ in pairs(tes3.weather) do
                         if weather == "thunder" then
                             table.insert(weatherNames, "Thunderstorm")
+                        elseif weather == "ash" then
+                            table.insert(weatherNames, "Ashstorm")
                         else
                             table.insert(weatherNames, weather:sub(1, 1):upper() .. weather:sub(2))
                         end
@@ -196,6 +202,8 @@ blockedPage:createExclusionsPage {
                     for weather, _ in pairs(tes3.weather) do
                         if weather == "thunder" then
                             table.insert(weatherNames, "Thunderstorm")
+                        elseif weather == "ash" then
+                            table.insert(weatherNames, "Ashstorm")
                         else
                             table.insert(weatherNames, weather:sub(1, 1):upper() .. weather:sub(2))
                         end
