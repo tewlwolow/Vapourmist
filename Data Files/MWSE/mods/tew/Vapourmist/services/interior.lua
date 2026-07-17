@@ -1,7 +1,6 @@
 local interior = {}
 
 -- Imports
-
 local util = require("tew.Vapourmist.components.util")
 local config = require("tew.Vapourmist.config")
 local debugLog = util.debugLog
@@ -13,15 +12,13 @@ local FOG_ID = "tew_interior"
 local MIN_STAT_COUNT = 5
 local HEIGHTS = { -900, -850, -800, -750 }
 local MAX_DISTANCE = 8192 * 3
-local BASE_DEPTH = 8192 / 32
-local DENSITY = 4
+local BASE_DEPTH = 8192 / 25
+local DENSITY = 3
 local BASE_COLOUR = {
 	r = 0.3,
 	g = 0.2,
 	b = 0.08,
 }
-
-local NAME_MAIN = "tew_InteriorFog"
 
 -- Structures
 
@@ -72,8 +69,6 @@ local interiorNames = {
 	"tomb",
 }
 
-local tracker = {}
-
 -- Functions
 
 local function isAvailable(cell)
@@ -92,8 +87,10 @@ local function isAvailable(cell)
 
 	local count = 0
 	for stat in cell:iterateReferences(tes3.objectType.static) do
+		local id = stat.object.id:lower()
+
 		for _, statName in ipairs(interiorStatics) do
-			if string.startswith(stat.object.id:lower(), statName) then
+			if string.startswith(id, statName) then
 				count = count + 1
 				if count >= MIN_STAT_COUNT then
 					debugLog("Found valid interior by static count")
@@ -123,14 +120,12 @@ end
 local function getFogLocation(cell)
 	local pos = { x = 0, y = 0, z = 0 }
 	local denom = 0
-	local xs, ys, zs = {}, {}, {}
+	local zs = {}
 
 	for stat in cell:iterateReferences() do
 		pos.x = pos.x + stat.position.x
 		pos.y = pos.y + stat.position.y
 		pos.z = pos.z + stat.position.z
-		table.insert(xs, stat.position.x)
-		table.insert(ys, stat.position.y)
 		table.insert(zs, stat.position.z)
 		denom = denom + 1
 	end
@@ -142,13 +137,7 @@ local function getFogLocation(cell)
 		calcZPos = math.lerp((pos.z / denom), math.min(table.unpack(zs)), 0.05)
 	end
 
-	return
-		{ x = pos.x / denom, y = pos.y / denom, z = calcZPos },
-		{
-			width = math.abs(math.max(table.unpack(xs)) - math.min(table.unpack(xs))),
-			height = math.abs(math.max(table.unpack(ys)) - math.min(table.unpack(ys))),
-			depth = math.abs(math.max(table.unpack(zs)) - math.min(table.unpack(zs))),
-		}
+	return { x = pos.x / denom, y = pos.y / denom, z = calcZPos }
 end
 
 ---@param val number
@@ -176,7 +165,7 @@ local function getAverageColour(cell)
 		if (
 				object.color[1] < 0 or
 				object.color[2] < 0 or
-				object.color[2] < 0
+				object.color[3] < 0
 			) then
 			return
 		end
@@ -202,8 +191,8 @@ end
 local function addFog(cell)
 	debugLog("Adding interior fog.")
 
-	local interiorFogColor = getAverageColour(cell)
-	local pos, size = getFogLocation(cell)
+	local interiorFogColor = getAverageColour(cell) or BASE_COLOUR
+	local pos = getFogLocation(cell)
 
 	local calcZPos, calcZRad
 	local depth = math.random(BASE_DEPTH / 1.2, BASE_DEPTH * 2)
@@ -245,7 +234,6 @@ function interior.onCellChanged()
 	interior.removeAllFog()
 	if not (cell.isOrBehavesAsExterior) then
 		debugLog("Starting interior check.")
-
 		if (isAvailable(cell)) then
 			addFog(cell)
 		end
