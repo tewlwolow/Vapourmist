@@ -1,3 +1,4 @@
+int mgeflags = 9;
 // Adapted to MGEXE by G7 and Safebox, modified by tewlwolow
 
 static const float NUM_FOG_VOLUMES = 3;

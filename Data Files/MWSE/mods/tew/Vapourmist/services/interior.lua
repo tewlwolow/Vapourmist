@@ -1,21 +1,17 @@
--- Interior fog module
--->>>---------------------------------------------------------------------------------------------<<<--
+local interior = {}
 
 -- Imports
-local interior = {}
+
 local util = require("tew.Vapourmist.components.util")
 local config = require("tew.Vapourmist.config")
 local debugLog = util.debugLog
 local shader = require("tew.Vapourmist.components.shader")
 
--->>>---------------------------------------------------------------------------------------------<<<--
 -- Constants
-
+local SHADER_NAME = "tew_dust"
+local FOG_ID = "tew_interior"
 local MIN_STAT_COUNT = 5
-local MESH = tes3.loadMesh("tew\\Vapourmist\\vapourint.nif")
 local HEIGHTS = { -900, -850, -800, -750 }
-local SIZES = { 150, 170, 185, 190, 250, 280, 300 }
-
 local MAX_DISTANCE = 8192 * 3
 local BASE_DEPTH = 8192 / 32
 local DENSITY = 4
@@ -26,15 +22,7 @@ local BASE_COLOUR = {
 }
 
 local NAME_MAIN = "tew_InteriorFog"
-local NAME_EMITTER = "tew_InteriorFog_Emitter"
-local NAME_PARTICLE_SYSTEMS = {
-	"tew_InteriorFog_ParticleSystem_1",
-	"tew_InteriorFog_ParticleSystem_2",
-	"tew_InteriorFog_ParticleSystem_3",
-}
 
-
--->>>---------------------------------------------------------------------------------------------<<<--
 -- Structures
 
 local interiorStatics = {
@@ -86,7 +74,6 @@ local interiorNames = {
 
 local tracker = {}
 
--->>>---------------------------------------------------------------------------------------------<<<--
 -- Functions
 
 local function isAvailable(cell)
@@ -120,55 +107,16 @@ local function isAvailable(cell)
 	return false
 end
 
-local function switchAppCull(node, bool)
-	if (node.appCulled ~= bool) then
-		node.appCulled = bool
-		node:update()
-	end
-end
-
 function interior.hideAll()
-	local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
-	for _, node in pairs(vfxRoot.children) do
-		if node and node.name == NAME_MAIN then
-			switchAppCull(node, true)
-		end
-	end
-	shader.disableFog()
+	shader.disableFog(SHADER_NAME)
 end
 
 function interior.unhideAll()
-	local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
-	for _, node in pairs(vfxRoot.children) do
-		if node and node.name == NAME_MAIN then
-			-- local emitter = node:getObjectByName(NAME_EMITTER)
-			switchAppCull(node, false)
-		end
-	end
-	shader.enableFog()
-end
-
-local function isCellFogged(cell)
-	return table.find(tracker, cell)
-end
-
-local function updateTracker(fogMesh, cell)
-	tracker[fogMesh] = cell
+	shader.enableFog(SHADER_NAME)
 end
 
 function interior.removeAllFog()
-	if not tracker or table.empty(tracker) then return end
-
-	local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
-	for _, node in pairs(vfxRoot.children) do
-		if node and node.name == NAME_MAIN then
-			vfxRoot:detachChild(node)
-		end
-	end
-
-	tracker = {}
-
-	shader.deleteFog(NAME_MAIN)
+	shader.deleteFog(SHADER_NAME, FOG_ID)
 end
 
 -- Determine fog position for interiors --
@@ -254,93 +202,40 @@ end
 local function addFog(cell)
 	debugLog("Adding interior fog.")
 
-	local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
+	local interiorFogColor = getAverageColour(cell)
+	local pos, size = getFogLocation(cell)
 
-	if not isCellFogged(cell) then
-		debugLog("Interior cell is not fogged.")
-		local interiorFogColor = getAverageColour(cell)
-		local pos, size = getFogLocation(cell)
-
-		if config.interiorNIF then
-			local fogMesh = MESH:clone()
-			fogMesh:clearTransforms()
-			fogMesh.translation = tes3vector3.new(
-				pos.x,
-				pos.y,
-				pos.z + table.choice(HEIGHTS) * math.random(1, 2)
-			)
-
-			vfxRoot:attachChild(fogMesh, true)
-
-			for _, name in ipairs(NAME_PARTICLE_SYSTEMS) do
-				local particleSystem = fogMesh:getObjectByName(name)
-
-				local controller = particleSystem.controller
-				local colorModifier = controller.particleModifiers
-
-				controller.emitterWidth = size.width
-				controller.emitterHeight = size.height
-				controller.emitterDepth = size.depth
-
-				local initialSize = SIZES[math.random(#SIZES)]
-				controller.initialSize = initialSize
-
-				for _, key in pairs(colorModifier.colorData.keys) do
-					key.color.r = interiorFogColor.r
-					key.color.g = interiorFogColor.g
-					key.color.b = interiorFogColor.b
-				end
-
-				local materialProperty = particleSystem.materialProperty
-				materialProperty.emissive = interiorFogColor
-				materialProperty.specular = interiorFogColor
-				materialProperty.diffuse = interiorFogColor
-				materialProperty.ambient = interiorFogColor
-
-				particleSystem:update()
-				particleSystem:updateProperties()
-				particleSystem:updateEffects()
-			end
-
-			updateTracker(fogMesh, cell)
-
-			fogMesh.appCulled = false
-			fogMesh:update()
-			fogMesh:updateProperties()
-			fogMesh:updateEffects()
-		end
-
-		---
-		if config.interiorShader then
-			local calcZPos, calcZRad
-			local depth = math.random(BASE_DEPTH / 1.2, BASE_DEPTH * 2)
-			calcZPos = pos.z + table.choice(HEIGHTS)
-			if cell.hasWater then
-				calcZRad = depth * 1.5
-				calcZPos = cell.waterLevel + calcZRad / 3
-			else
-				calcZPos = pos.z + (table.choice(HEIGHTS) / math.random(6, 10))
-				calcZRad = depth
-			end
-
-			local fogParams = {
-				color = tes3vector3.new(
-					interiorFogColor.r,
-					interiorFogColor.g,
-					interiorFogColor.b
-				),
-				center = tes3vector3.new(
-					pos.x,
-					pos.y,
-					calcZPos
-				),
-				radius = tes3vector3.new(MAX_DISTANCE, MAX_DISTANCE, calcZRad),
-				density = math.random(DENSITY / 3, DENSITY * 1.3),
-			}
-
-			shader.createOrUpdateFog(NAME_MAIN, fogParams)
-		end
+	local calcZPos, calcZRad
+	local depth = math.random(BASE_DEPTH / 1.2, BASE_DEPTH * 2)
+	calcZPos = pos.z + table.choice(HEIGHTS)
+	if cell.hasWater then
+		calcZRad = depth * 1.5
+		calcZPos = cell.waterLevel + calcZRad / 3
+	else
+		calcZPos = pos.z + (table.choice(HEIGHTS) / math.random(6, 10))
+		calcZRad = depth
 	end
+
+	local fogParams = {
+		color = tes3vector3.new(
+			interiorFogColor.r,
+			interiorFogColor.g,
+			interiorFogColor.b
+		),
+		center = tes3vector3.new(
+			pos.x,
+			pos.y,
+			calcZPos
+		),
+		radius = tes3vector3.new(MAX_DISTANCE, MAX_DISTANCE, calcZRad),
+		density = math.random(DENSITY / 3, DENSITY * 1.3),
+	}
+
+	shader.createOrUpdateFog(
+		SHADER_NAME,
+		FOG_ID,
+		fogParams
+	)
 end
 
 function interior.onCellChanged()
@@ -351,7 +246,7 @@ function interior.onCellChanged()
 	if not (cell.isOrBehavesAsExterior) then
 		debugLog("Starting interior check.")
 
-		if (isAvailable(cell)) and not (isCellFogged(cell)) then
+		if (isAvailable(cell)) then
 			addFog(cell)
 		end
 	end

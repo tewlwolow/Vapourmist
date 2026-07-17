@@ -1,45 +1,33 @@
 local this = {}
 
----@type mgeShaderHandle|nil
-local shader
-
-local SHADER_NAME = "tew_fogbox"
-
 local NUM_FOG_VOLUMES = 3
 
 local fogVolumes = {
     fogCenters = {
         0, 0, 0,
         0, 0, 0,
-        0, 0, 0
+        0, 0, 0,
     },
     fogRadi = {
         0, 0, 0,
         0, 0, 0,
-        0, 0, 0
+        0, 0, 0,
     },
     fogColors = {
         0, 0, 0,
         0, 0, 0,
-        0, 0, 0
+        0, 0, 0,
     },
     fogDensities = {
         0,
         0,
-        0
-    }
+        0,
+    },
 }
 
 --- Associates each active fog volume to a specific available index.
 ---@type table<string, number>
 local activeFogVolumes = {}
-
----@class fogParams
----@field color tes3vector3
----@field center tes3vector3
----@field radius tes3vector3
----@field density number
-
 
 ---@return number|nil
 local function getNextAvailableIndex()
@@ -50,14 +38,12 @@ local function getNextAvailableIndex()
     end
 end
 
-
 ---@param id string
 ---@return number|nil
 local function getFogVolumeIndex(id)
     local index = activeFogVolumes[id]
     return index or getNextAvailableIndex()
 end
-
 
 ---@param i number
 ---@param params fogParams
@@ -81,9 +67,15 @@ local function setParamsForIndex(i, params)
     fogVolumes.fogDensities[i] = params.density
 end
 
+---@param shaderName string
+---@return mgeShaderHandle|nil
+local function getShader(shaderName)
+    return mge.shaders.load({ name = shaderName })
+end
 
-local function applyShaderParams()
-    shader = mge.shaders.load({ name = SHADER_NAME })
+---@param shaderName string
+local function applyShaderParams(shaderName)
+    local shader = getShader(shaderName)
     if shader then
         shader.fogColors = fogVolumes.fogColors
         shader.fogCenters = fogVolumes.fogCenters
@@ -92,22 +84,27 @@ local function applyShaderParams()
     end
 end
 
-
+---@param shaderName string
 ---@param id string
 ---@param params fogParams
-function this.createOrUpdateFog(id, params)
+function this.createOrUpdateFog(shaderName, id, params)
     local index = getFogVolumeIndex(id)
     if index then
         setParamsForIndex(index, params)
-        applyShaderParams()
+        applyShaderParams(shaderName)
+
         activeFogVolumes[id] = index
-        shader.enabled = true
+
+        local shader = getShader(shaderName)
+        if shader then
+            shader.enabled = true
+        end
     end
 end
 
-
+---@param shaderName string
 ---@param id string
-function this.deleteFog(id)
+function this.deleteFog(shaderName, id)
     local index = getFogVolumeIndex(id)
     if index then
         setParamsForIndex(index, {
@@ -116,20 +113,34 @@ function this.deleteFog(id)
             radius = tes3vector3.new(),
             density = 0,
         })
-        applyShaderParams()
+
+        applyShaderParams(shaderName)
+
         activeFogVolumes[id] = nil
+
         if not next(activeFogVolumes) then
-            shader.enabled = false
+            local shader = getShader(shaderName)
+            if shader then
+                shader.enabled = false
+            end
         end
     end
 end
 
-function this.disableFog()
-    shader.enabled = false
+---@param shaderName string
+function this.disableFog(shaderName)
+    local shader = getShader(shaderName)
+    if shader then
+        shader.enabled = false
+    end
 end
 
-function this.enableFog()
-    shader.enabled = true
+---@param shaderName string
+function this.enableFog(shaderName)
+    local shader = getShader(shaderName)
+    if shader then
+        shader.enabled = true
+    end
 end
 
 return this

@@ -7,6 +7,7 @@ local debugLog = util.debugLog
 local config = require("tew.Vapourmist.config")
 
 -- Constants
+local SHADER_NAME = "tew_fogbox"
 local FOG_ID = "tew_mist"
 local MAX_DISTANCE = 8192 * 3
 local BASE_DEPTH = 8192 / 8
@@ -225,7 +226,7 @@ local function updateMist(e)
     if cell.isInterior then
         mistDensity = 0
 
-        shader.deleteFog(FOG_ID)
+        shader.deleteFog(SHADER_NAME, FOG_ID)
 
         -- debugLog(
         --     "Cell is interior. Mist shader removed."
@@ -277,7 +278,7 @@ local function updateMist(e)
             isFading = false
 
             if mistDensity <= 0.001 then
-                shader.deleteFog(FOG_ID)
+                shader.deleteFog(SHADER_NAME, FOG_ID)
 
                 mistDeployed = false
 
@@ -332,6 +333,7 @@ local function updateMist(e)
     -- )
 
     shader.createOrUpdateFog(
+        SHADER_NAME,
         FOG_ID,
         fogParams
     )
@@ -396,7 +398,7 @@ function mistShader.removeMistImmediate()
 
     radiusFadeTarget = BASE_DEPTH
 
-    shader.deleteFog(FOG_ID)
+    shader.deleteFog(SHADER_NAME, FOG_ID)
 
     debugLog(
         "Mist shader removed immediately."
