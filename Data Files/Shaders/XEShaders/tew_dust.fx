@@ -26,10 +26,42 @@ float2 rcpres;
 float3 fognearcol;
 float fov;
 
-// dustSphereScale: currently unused (kept for future lua hookup)
-// dustDensity: 0 = no dust, 20 = every cell spawns a particle (maximum density)
-float dustSphereScale = 0.1;
+
+// ---------------- dust controls ----------------
+
+// Density:
+// 0   = no particles
+// 20  = maximum particles
 float dustDensity = 1.0;
+
+// Particle size multiplier
+float dustSize = 1.0;
+
+// Distance between particle cells
+float dustCellSize = 30.0;
+
+// Animation speed
+float dustTimeScale = 1.0;
+
+// Movement amplitude
+float dustMotionScale = 0.1;
+
+// Particle shape:
+// 1 = diamond
+// 2 = sphere
+// 4+ = cube-like
+float dustShape = 2.0;
+
+// Raymarch limits
+float dustMaxDistance = 1600.0;
+float dustSurfaceDistance = 0.01;
+
+// Fade controls
+float dustFadeStart = 20.0;
+float dustFadeEnd = 30.0;
+
+// Material threshold
+float dustMaterialBias = 0.3;
 
 // -- fogbox params --
 static const float NUM_FOG_VOLUMES = 3;
@@ -84,61 +116,145 @@ float3 toWorld(float2 tex) {
 
 // ---------------- dust: distance field ----------------
 
-// STRIPPED DOWN INNER MATH - No trig, no branches.
-float GetDistOnly(float3 p) {
-    float3 cellIndex = floor((p + eyepos) * 0.0333333); // * (1 / 30.0)
-
-    float3 h = frac(cellIndex * 0.3183099 + 0.1) * 17.0;
-    float r1 = frac(h.x * h.y * h.z * (h.x + h.y + h.z));
-    float r2 = frac(r1 * 17.543); // same hash used by GetMaterial to decide if this cell spawns a particle
-
-    float timeFactor = time + r1 * 6.2831;
-    float3 phase = float3(spherePosBase.x * 0.5, spherePosBase.y * 0.4, spherePosBase.z * 0.6) + timeFactor * float3(1.0, 1.3, 0.9);
-
-    // Fast Triangle Wave instead of heavy Sin/Cos.
-    float3 sphereOffset = abs(frac(phase * 0.159155) * 4.0 - 2.0) - 1.0;
-
-    float3 q = p - (spherePosBase + 2.0 + sphereOffset) + eyepos;
-
-    q = frac(q * 0.0333333) * 30.0 - 15.0;
-
-    float radius = 0.1 + 0.4 * frac(r1 * 43.123);
-
-    // dustDensity controls what fraction of cells actually spawn a particle:
-    // 0 = none spawn, 20 = all cells spawn. Cells that don't spawn get radius
-    // collapsed to ~0 so the raymarcher effectively skips them.
-    float spawnThreshold = saturate(1.0 - dustDensity * 0.05);
-    radius *= step(spawnThreshold, r2);
-
-    return length(q) - radius;
+float sdSuperShape(float3 p, float r, float n)
+{
+    return pow(
+        pow(abs(p.x), n) +
+        pow(abs(p.y), n) +
+        pow(abs(p.z), n),
+        1.0 / n
+    ) - r;
 }
 
-// VISUALS ONLY (Executed ONCE outside the loop)
-float GetMaterial(float3 p) {
-    float3 cellIndex = floor((p + eyepos) * 0.0333333);
+// STRIPPED DOWN INNER MATH - No trig, no branches.
+float GetDistOnly(float3 p)
+{
+    float invCell = 1.0 / dustCellSize;
+
+    float3 cellIndex = floor((p + eyepos) * invCell);
 
     float3 h = frac(cellIndex * 0.3183099 + 0.1) * 17.0;
+
     float r1 = frac(h.x * h.y * h.z * (h.x + h.y + h.z));
     float r2 = frac(r1 * 17.543);
 
-    float timeFactor = time + r1 * 6.2831;
-    float3 phase = float3(spherePosBase.x * 0.5, spherePosBase.y * 0.4, spherePosBase.z * 0.6) + timeFactor * float3(1.0, 1.3, 0.9);
-    float3 sphereOffset = abs(frac(phase * 0.159155) * 4.0 - 2.0) - 1.0;
 
-    float spawnThreshold = saturate(1.0 - dustDensity * 0.05);
-    return step(spawnThreshold, r2) * smoothstep(0.0, 1.0, sphereOffset.x + sphereOffset.y + sphereOffset.z);
+    float timeFactor = time * dustTimeScale + r1 * 6.2831;
+
+    float3 phase =
+        float3(
+            -24900.0 * 0.5,
+            -13000.0 * 0.4,
+            0.0
+        )
+        +
+        timeFactor * float3(1.0,1.3,0.9);
+
+
+    float3 sphereOffset =
+        (abs(frac(phase * 0.159155) * 4.0 - 2.0) - 1.0)
+        * dustMotionScale;
+
+
+    float3 basePos = float3(-24900.0,-13000.0,0.0);
+
+    float3 q =
+        p -
+        (basePos + 2.0 + sphereOffset)
+        +
+        eyepos;
+
+
+    q = frac(q * invCell) * dustCellSize
+        - dustCellSize * 0.5;
+
+
+    float radius =
+        (0.1 + 0.4 * frac(r1 * 43.123))
+        * dustSize;
+
+
+    float spawnThreshold =
+        saturate(1.0 - dustDensity * 0.05);
+
+
+    radius *= step(spawnThreshold,r2);
+
+
+    return sdSuperShape(q,radius,dustShape);
 }
 
-float RayMarch(float3 ro, float3 rd) {
-    float dO = 0;
-    [loop]
-    for (int i = 0; i < MAX_STEPS; i++) {
-        float3 p = ro + dO * rd;
-        float dS = GetDistOnly(p);
-        dO += dS;
+// VISUALS ONLY (Executed ONCE outside the loop)
+float GetMaterial(float3 p)
+{
+    float invCell = 1.0 / dustCellSize;
 
-        if (dS < SURFACE_DIST || dO > MAX_DIST) break;
+    float3 cellIndex =
+        floor((p + eyepos) * invCell);
+
+
+    float3 h =
+        frac(cellIndex * 0.3183099 + 0.1)
+        * 17.0;
+
+
+    float r1 =
+        frac(h.x*h.y*h.z*(h.x+h.y+h.z));
+
+
+    float r2 =
+        frac(r1*17.543);
+
+
+    float spawnThreshold =
+        saturate(1.0 - dustDensity*0.05);
+
+
+    float timeFactor =
+        time*dustTimeScale + r1*6.2831;
+
+
+    float3 phase =
+        float3(-24900.0*0.5,
+               -13000.0*0.4,
+               0.0)
+        +
+        timeFactor*float3(1.0,1.3,0.9);
+
+
+    float3 sphereOffset =
+        abs(frac(phase*0.159155)*4.0-2.0)-1.0;
+
+
+    return step(spawnThreshold,r2)
+        *
+        smoothstep(
+            0.0,
+            1.0,
+            sphereOffset.x+
+            sphereOffset.y+
+            sphereOffset.z
+        );
+}
+
+float RayMarch(float3 ro,float3 rd)
+{
+    float dO=0;
+
+    [loop]
+    for(int i=0;i<200;i++)
+    {
+        float3 p=ro+dO*rd;
+
+        float dS=GetDistOnly(p);
+
+        dO+=dS;
+
+        if(dS<dustSurfaceDistance ||
+           dO>dustMaxDistance)
+            break;
     }
+
     return dO;
 }
 
@@ -217,7 +333,7 @@ float4 dustfog(float2 tex : TEXCOORD0, float2 vpos : VPOS) : COLOR0 {
     float3 p = ro + rd * d;
 
     float3 col;
-    if (d > MAX_DIST || dm < d) {
+    if (d > dustMaxDistance || dm < d) {
         col = scenecol.rgb;
     }
     else {
@@ -225,7 +341,7 @@ float4 dustfog(float2 tex : TEXCOORD0, float2 vpos : VPOS) : COLOR0 {
         float l = max(0.0, dot(eyevec, -normalize(sunpos)));
         float3 linCol = lerp(pow(scenecol.rgb, 2.2),
                             dustTintLinear,
-                            smoothstep(20,30,d)*saturate(sp-0.3));
+                            smoothstep(dustFadeStart,dustFadeEnd,d)*saturate(sp-dustMaterialBias));
         col = pow(linCol, 1.0/2.2); // back to gamma space so it matches scenecol for the fog pass below
     }
 
