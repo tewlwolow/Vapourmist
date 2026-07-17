@@ -29,22 +29,24 @@ float fov;
 
 // ---------------- dust controls ----------------
 
+// ---------------- dust controls ----------------
+
 // Density:
 // 0   = no particles
 // 20  = maximum particles
-float dustDensity = 1.0;
+float dustDensity = 5.0;
 
 // Particle size multiplier
-float dustSize = 1.0;
+float dustSize = 0.82;
 
 // Distance between particle cells
-float dustCellSize = 30.0;
+float dustCellSize = 40.0;
 
 // Animation speed
-float dustTimeScale = 1.0;
+float dustTimeScale = 0.65;
 
 // Movement amplitude
-float dustMotionScale = 0.1;
+float dustMotionScale = 2.2;
 
 // Particle shape:
 // 1 = diamond
@@ -53,15 +55,23 @@ float dustMotionScale = 0.1;
 float dustShape = 2.0;
 
 // Raymarch limits
-float dustMaxDistance = 1600.0;
+float dustMaxDistance = 1200.0;
 float dustSurfaceDistance = 0.01;
 
 // Fade controls
-float dustFadeStart = 20.0;
-float dustFadeEnd = 30.0;
+float dustFadeStart = 22.0;
+float dustFadeEnd = 75.0;
 
 // Material threshold
-float dustMaterialBias = 0.3;
+// Lower = more particles visible
+// Higher = only brighter particles
+float dustMaterialBias = 0.24;
+
+// Dust visibility / brightness
+// 0   = invisible
+// 1   = old strength
+// 0.15-0.35 = natural cave dust
+float dustOpacity = 0.26;
 
 // -- fogbox params --
 static const float NUM_FOG_VOLUMES = 3;
@@ -339,9 +349,26 @@ float4 dustfog(float2 tex : TEXCOORD0, float2 vpos : VPOS) : COLOR0 {
     else {
         float sp = GetMaterial(p);
         float l = max(0.0, dot(eyevec, -normalize(sunpos)));
-        float3 linCol = lerp(pow(scenecol.rgb, 2.2),
-                            dustTintLinear,
-                            smoothstep(dustFadeStart,dustFadeEnd,d)*saturate(sp-dustMaterialBias));
+        float dustAmount =
+            smoothstep(dustFadeStart,dustFadeEnd,d)
+            *
+            saturate(sp-dustMaterialBias)
+            *
+            dustOpacity;
+
+        float3 sceneLinear = pow(scenecol.rgb,2.2);
+
+        float distanceFade =
+            1.0 - saturate(d / dustMaxDistance);
+
+        dustAmount *= distanceFade;    
+
+        // subtle fog-colored particle tint
+        float3 dustColor =
+            dustTintLinear * dustAmount;
+
+        // blend dust into scene
+        float3 linCol = sceneLinear + dustColor;
         col = pow(linCol, 1.0/2.2); // back to gamma space so it matches scenecol for the fog pass below
     }
 
