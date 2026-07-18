@@ -58,6 +58,12 @@ float boxDensity(float3 wpos, float3 wdir, float3 p, float3 r, float dbuffer) {
 
     // clip integration segment from camera to dbuffer
     tN = max(tN, 0.0);
+
+    float waterlevel = -5.0;
+    float3 waterProbe = wpos + wdir * tF;
+    if (wpos.z > waterlevel && waterProbe.z < waterlevel)
+        tF = (1.0 - (waterlevel-waterProbe.z) / (wpos.z-waterProbe.z)) * tF;
+
     tF = min(tF, dbuffer);
 
     // move ray to the intersection point

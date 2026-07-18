@@ -20,8 +20,6 @@ float fognearstart, fognearrange;
 
 // -- dust params --
 float3 sunpos;
-float3 suncol;
-float3 sunamb;
 float2 rcpres;
 float3 fognearcol;
 float fov;
@@ -34,44 +32,44 @@ float fov;
 // Density:
 // 0   = no particles
 // 20  = maximum particles
-float dustDensity = 5.0;
+float dustDensity = 6.5;
 
 // Particle size multiplier
-float dustSize = 0.82;
+float dustSize = 0.95;
 
 // Distance between particle cells
 float dustCellSize = 40.0;
 
 // Animation speed
-float dustTimeScale = 0.65;
+float dustTimeScale = 0.15;
 
 // Movement amplitude
-float dustMotionScale = 2.2;
+float dustMotionScale = 6.0;
 
 // Particle shape:
 // 1 = diamond
 // 2 = sphere
 // 4+ = cube-like
-float dustShape = 2.0;
+float dustShape = 1.85;
 
 // Raymarch limits
 float dustMaxDistance = 1200.0;
 float dustSurfaceDistance = 0.01;
 
 // Fade controls
-float dustFadeStart = 22.0;
-float dustFadeEnd = 75.0;
+float dustFadeStart = 20.0;
+float dustFadeEnd = 80.0;
 
 // Material threshold
 // Lower = more particles visible
 // Higher = only brighter particles
-float dustMaterialBias = 0.24;
+float dustMaterialBias = 0.18;
 
 // Dust visibility / brightness
 // 0   = invisible
 // 1   = old strength
 // 0.15-0.35 = natural cave dust
-float dustOpacity = 0.26;
+float dustOpacity = 0.18;
 
 // -- fogbox params --
 static const float NUM_FOG_VOLUMES = 3;
@@ -287,6 +285,13 @@ float boxDensity(float3 wpos, float3 wdir, float3 p, float3 r, float dbuffer) {
     if (tF < 0.0 || tN > dbuffer) return 0.0;
 
     tN = max(tN, 0.0);
+
+    float waterlevel = -5.0;
+    float3 waterProbe = wpos + wdir * tF;
+    if (wpos.z > waterlevel && waterProbe.z < waterlevel)
+        tF = (1.0 - (waterlevel-waterProbe.z) / (wpos.z-waterProbe.z)) * tF;
+
+
     tF = min(tF, dbuffer);
 
     o += tN*d; tF = tF-tN; tN = 0.0;
