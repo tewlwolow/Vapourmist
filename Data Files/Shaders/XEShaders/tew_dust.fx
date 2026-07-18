@@ -15,6 +15,7 @@ float time;
 float3 eyepos, eyevec;
 float4x4 mview;
 float4x4 mproj;
+float waterlevel = 0.0;
 
 float fognearstart, fognearrange;
 
@@ -32,10 +33,10 @@ float fov;
 // Density:
 // 0   = no particles
 // 20  = maximum particles
-float dustDensity = 6.5;
+float dustDensity = 6.0;
 
 // Particle size multiplier
-float dustSize = 0.95;
+float dustSize = 1.5;
 
 // Distance between particle cells
 float dustCellSize = 40.0;
@@ -63,13 +64,36 @@ float dustFadeEnd = 80.0;
 // Material threshold
 // Lower = more particles visible
 // Higher = only brighter particles
-float dustMaterialBias = 0.18;
+float dustMaterialBias = 0.25;
 
 // Dust visibility / brightness
 // 0   = invisible
 // 1   = old strength
 // 0.15-0.35 = natural cave dust
-float dustOpacity = 0.18;
+float dustOpacity = 0.25;
+
+// Neutral fallback color used when no fog volume is nearby (avoids dust
+// tinting toward black - see dustTint fallback in the main pass).
+float3 dustBaseColor = float3(0.85, 0.82, 0.75);
+
+// How much the particle shape exponent (dustShape) varies per-particle.
+// 0 = every particle uses exactly dustShape. Higher = more mix of
+// diamond/sphere/cube-ish silhouettes for a less uniform look.
+float dustShapeVariation = 0.9;
+
+// How much particle opacity varies per-particle, as a fraction of
+// dustOpacity. 0 = every particle equally opaque. 1 = some particles
+// can fade almost to nothing while others hit full dustOpacity.
+float dustOpacityVariation = 0.5;
+
+// Wind gusts: periodically sweeps ALL particles together in a shared
+// direction (layered on top of each particle's own independent drift),
+// and briefly stirs up extra density while a gust is active - distinct
+// from the per-particle jitter, which never moves particles as a group.
+float3 dustWindDir = float3(1.0, 0.3, 0.0); // world-space direction, doesn't need to be normalized
+float dustGustStrength = 30.0;              // world units of displacement at peak gust
+float dustGustSpeed = 0.7;                  // how fast gusts cycle
+float dustGustDensityBoost = 0.9;           // extra density multiplier at peak gust (stirred-up dust)
 
 // -- fogbox params --
 static const float NUM_FOG_VOLUMES = 3;
@@ -78,11 +102,23 @@ float fogRadi[NUM_FOG_VOLUMES][3];
 float fogColors[NUM_FOG_VOLUMES][3];
 float fogDensities[NUM_FOG_VOLUMES];
 
-// ---------------- constants ----------------
+// Horizontal gust drift on top of the existing vertical bob (center.z
+// already oscillates via cos/sin above) - makes the fog feel pushed
+// around by wind instead of just breathing up and down in place.
+// Bounded oscillation like the existing motion, not unbounded drift.
+float fogGustAmount = 40.0;   // world units of horizontal sway
+float fogGustSpeed = 0.15;    // how fast the sway cycles
 
-static const int   MAX_STEPS    = 200;
-static const float MAX_DIST     = 1600.0;
-static const float SURFACE_DIST = 0.01;
+// Cheap 3D value noise breaks up the smooth analytic box gradient into
+// wispy/patchy variation, sampled once per fog volume at roughly where
+// the camera ray enters that volume, and slowly scrolled over time so
+// the patchiness itself drifts like real fog would.
+// 0 = perfectly smooth (old behavior), higher = patchier/wispier.
+float fogNoiseStrength = 0.24;
+float fogNoiseScale = 0.042;   // world-space frequency - lower = larger wisps
+float fogNoiseSpeed = 8;    // how fast the noise pattern scrolls
+
+// ---------------- constants ----------------
 
 static const float2 invproj = 2.0 * tan(0.5 * radians(fov)) * float2(1.0, rcpres.x / rcpres.y);
 static const float3 spherePosBase = float3(-24900.0, -13000.0, 0.0);
@@ -122,6 +158,40 @@ float3 toWorld(float2 tex) {
     return v;
 }
 
+// Cheap value noise for fog patchiness - trilinear interpolation over
+// 8 hashed cell corners. Only evaluated 3x per pixel (once per fog
+// volume), not per raymarch step, so this stays affordable.
+float hashFog(float3 p) {
+    p = frac(p * 0.3183099 + 0.1);
+    p *= 17.0;
+    return frac(p.x * p.y * p.z * (p.x + p.y + p.z));
+}
+
+float noiseFog(float3 p) {
+    float3 i = floor(p);
+    float3 f = frac(p);
+    f = f * f * (3.0 - 2.0 * f);
+
+    float n000 = hashFog(i + float3(0,0,0));
+    float n100 = hashFog(i + float3(1,0,0));
+    float n010 = hashFog(i + float3(0,1,0));
+    float n110 = hashFog(i + float3(1,1,0));
+    float n001 = hashFog(i + float3(0,0,1));
+    float n101 = hashFog(i + float3(1,0,1));
+    float n011 = hashFog(i + float3(0,1,1));
+    float n111 = hashFog(i + float3(1,1,1));
+
+    float nx00 = lerp(n000, n100, f.x);
+    float nx10 = lerp(n010, n110, f.x);
+    float nx01 = lerp(n001, n101, f.x);
+    float nx11 = lerp(n011, n111, f.x);
+
+    float nxy0 = lerp(nx00, nx10, f.y);
+    float nxy1 = lerp(nx01, nx11, f.y);
+
+    return lerp(nxy0, nxy1, f.z);
+}
+
 // ---------------- dust: distance field ----------------
 
 float sdSuperShape(float3 p, float r, float n)
@@ -144,7 +214,16 @@ float GetDistOnly(float3 p)
     float3 h = frac(cellIndex * 0.3183099 + 0.1) * 17.0;
 
     float r1 = frac(h.x * h.y * h.z * (h.x + h.y + h.z));
-    float r2 = frac(r1 * 17.543);
+
+    // Shared wind gust envelope - deliberately NOT derived from r1, so
+    // every particle feels the exact same gust at the same time (unlike
+    // the per-particle jitter below, which is deliberately decorrelated).
+    // Two off-beat sine waves avoid a too-regular, metronomic pulse.
+    float gustPhase1 = time * dustGustSpeed;
+    float gustPhase2 = time * dustGustSpeed * 0.37 + 1.7;
+    float gust = saturate(sin(gustPhase1) * 0.6 + sin(gustPhase2) * 0.4);
+    gust = pow(gust, 3.0); // sharpen into brief gusts rather than a smooth back-and-forth
+    float3 gustOffset = normalize(dustWindDir) * gust * dustGustStrength;
 
 
     float timeFactor = time * dustTimeScale + r1 * 6.2831;
@@ -168,7 +247,7 @@ float GetDistOnly(float3 p)
 
     float3 q =
         p -
-        (basePos + 2.0 + sphereOffset)
+        (basePos + 2.0 + sphereOffset + gustOffset)
         +
         eyepos;
 
@@ -182,14 +261,19 @@ float GetDistOnly(float3 p)
         * dustSize;
 
 
-    float spawnThreshold =
-        saturate(1.0 - dustDensity * 0.05);
+    // Continuous density: scales particle size smoothly rather than
+    // gating whole cells on/off, so raising/lowering dustDensity reads
+    // as a genuine density gradient instead of patches popping in/out.
+    // Also stirred up briefly by gusts (wind kicking up more visible dust).
+    float densityScale = saturate(dustDensity / 20.0) * (1.0 + gust * dustGustDensityBoost);
+    radius *= densityScale;
 
+    // Per-particle shape variation: jitter the superellipsoid exponent
+    // around dustShape so particles aren't all identical silhouettes.
+    float shapeJitter = (frac(r1 * 29.71) - 0.5) * 2.0 * dustShapeVariation;
+    float shapeN = max(1.0, dustShape + shapeJitter);
 
-    radius *= step(spawnThreshold,r2);
-
-
-    return sdSuperShape(q,radius,dustShape);
+    return sdSuperShape(q,radius,shapeN);
 }
 
 // VISUALS ONLY (Executed ONCE outside the loop)
@@ -210,14 +294,6 @@ float GetMaterial(float3 p)
         frac(h.x*h.y*h.z*(h.x+h.y+h.z));
 
 
-    float r2 =
-        frac(r1*17.543);
-
-
-    float spawnThreshold =
-        saturate(1.0 - dustDensity*0.05);
-
-
     float timeFactor =
         time*dustTimeScale + r1*6.2831;
 
@@ -234,9 +310,7 @@ float GetMaterial(float3 p)
         abs(frac(phase*0.159155)*4.0-2.0)-1.0;
 
 
-    return step(spawnThreshold,r2)
-        *
-        smoothstep(
+    return smoothstep(
             0.0,
             1.0,
             sphereOffset.x+
@@ -286,7 +360,6 @@ float boxDensity(float3 wpos, float3 wdir, float3 p, float3 r, float dbuffer) {
 
     tN = max(tN, 0.0);
 
-    float waterlevel = -5.0;
     float3 waterProbe = wpos + wdir * tF;
     if (wpos.z > waterlevel && waterProbe.z < waterlevel)
         tF = (1.0 - (waterlevel-waterProbe.z) / (wpos.z-waterProbe.z)) * tF;
@@ -329,14 +402,18 @@ float4 dustfog(float2 tex : TEXCOORD0, float2 vpos : VPOS) : COLOR0 {
 
     // Density-weighted average of the fog colors - used to tint dust particles
     // so they match whichever fog volume currently dominates the scene.
+    // Falls back to dustBaseColor when little/no fog is nearby, instead of
+    // dividing by a near-zero weight and going black.
     float3 fogColorSum = float3(0.0, 0.0, 0.0);
-    float fogWeightSum = 0.0001; // avoid divide by zero when all fog densities are 0
+    float fogDensitySum = 0.0;
     [unroll]
     for (int fc = 0; fc < NUM_FOG_VOLUMES; fc++) {
         fogColorSum += float3(fogColors[fc]) * fogDensities[fc];
-        fogWeightSum += fogDensities[fc];
+        fogDensitySum += fogDensities[fc];
     }
-    float3 dustTint = fogColorSum / fogWeightSum;
+    float3 fogAvgColor = fogColorSum / max(fogDensitySum, 0.0001);
+    float fogInfluence = saturate(fogDensitySum);
+    float3 dustTint = lerp(dustBaseColor, fogAvgColor, fogInfluence);
     float3 dustTintLinear = dustTint * dustTint; // approx gamma->linear, matches the fog loop below
 
     // ================= DUST PASS =================
@@ -353,20 +430,28 @@ float4 dustfog(float2 tex : TEXCOORD0, float2 vpos : VPOS) : COLOR0 {
     }
     else {
         float sp = GetMaterial(p);
-        float l = max(0.0, dot(eyevec, -normalize(sunpos)));
+
+        // Per-particle opacity variation: unique deterministic factor
+        // from this particle's world position, so neighboring motes
+        // don't all render at identical strength.
+        float opacitySeed = frac(sin(dot(p, float3(12.9898, 78.233, 37.719))) * 43758.5453);
+        float opacityMult = lerp(1.0 - dustOpacityVariation, 1.0, opacitySeed);
+
         float dustAmount =
             smoothstep(dustFadeStart,dustFadeEnd,d)
             *
             saturate(sp-dustMaterialBias)
             *
-            dustOpacity;
+            dustOpacity
+            *
+            opacityMult;
 
         float3 sceneLinear = pow(scenecol.rgb,2.2);
 
         float distanceFade =
             1.0 - saturate(d / dustMaxDistance);
 
-        dustAmount *= distanceFade;    
+        dustAmount *= distanceFade;
 
         // subtle fog-colored particle tint
         float3 dustColor =
@@ -390,6 +475,9 @@ float4 dustfog(float2 tex : TEXCOORD0, float2 vpos : VPOS) : COLOR0 {
 
         float3 center = float3(fogCenters[i]);
         center.z -= (((i + 2) * 320) - 250) * cos(time/60);
+        // horizontal gust sway, decorrelated per volume via the i-based phase offset
+        center.x += fogGustAmount * sin(time * fogGustSpeed + i * 2.1);
+        center.y += fogGustAmount * cos(time * fogGustSpeed * 0.8 + i * 1.3);
 
         float3 radius = float3(fogRadi[i]);
         radius.z += (((i + 2) * 150) - 60) * sin(time/25);
@@ -398,6 +486,17 @@ float4 dustfog(float2 tex : TEXCOORD0, float2 vpos : VPOS) : COLOR0 {
         if (density > 0.0) {
             float fogScalar = 1.0 / sqrt(dot(radius, radius));
             density = density * fogScalar * fogDensities[i];
+
+            // Break up the smooth analytic gradient with drifting patchiness.
+            // Sampled at roughly where this ray enters the volume, so
+            // different screen pixels see different wisps rather than a
+            // uniform per-volume tint.
+            float3 rdN = normalize(dir);
+            float tEstimate = max(0.0, dot(center - pos, rdN));
+            float3 samplePoint = pos + rdN * tEstimate;
+            float3 windScroll = normalize(dustWindDir) * time * fogNoiseSpeed;
+            float noiseVal = noiseFog((samplePoint + windScroll) * fogNoiseScale);
+            density *= lerp(1.0 - fogNoiseStrength, 1.0 + fogNoiseStrength, noiseVal);
 
             float3 fogColor = float3(fogColors[i]);
             color = lerp(fogColor * fogColor, color, exp(-0.5 * density));

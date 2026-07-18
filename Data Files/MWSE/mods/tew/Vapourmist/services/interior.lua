@@ -225,6 +225,12 @@ local function addFog(cell)
 		FOG_ID,
 		fogParams
 	)
+
+	shader.setValue {
+		shader = SHADER_NAME,
+		param = "waterLevel",
+		value = calcZPos,
+	}
 end
 
 function interior.onCellChanged()

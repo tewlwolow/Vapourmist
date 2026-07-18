@@ -84,6 +84,19 @@ local function applyShaderParams(shaderName)
     end
 end
 
+
+function this.setValue(params)
+    local shader = getShader(params.shaderName)
+
+    if shader then
+        local param = params.param
+        local value = params.value
+        if param and value then
+            shader[param] = value
+        end
+    end
+end
+
 ---@param shaderName string
 ---@param id string
 ---@param params fogParams
