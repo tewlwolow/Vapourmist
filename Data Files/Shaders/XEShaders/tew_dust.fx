@@ -33,13 +33,13 @@ float fov;
 // Density:
 // 0   = no particles
 // 20  = maximum particles
-float dustDensity = 6.0;
+float dustDensity = 4.0;
 
 // Particle size multiplier
-float dustSize = 1.5;
+float dustSize = 1.8;
 
 // Distance between particle cells
-float dustCellSize = 40.0;
+float dustCellSize = 45.0;
 
 // Animation speed
 float dustTimeScale = 0.15;
@@ -70,7 +70,7 @@ float dustMaterialBias = 0.25;
 // 0   = invisible
 // 1   = old strength
 // 0.15-0.35 = natural cave dust
-float dustOpacity = 0.25;
+float dustOpacity = 0.15;
 
 // Neutral fallback color used when no fog volume is nearby (avoids dust
 // tinting toward black - see dustTint fallback in the main pass).
@@ -79,21 +79,12 @@ float3 dustBaseColor = float3(0.85, 0.82, 0.75);
 // How much the particle shape exponent (dustShape) varies per-particle.
 // 0 = every particle uses exactly dustShape. Higher = more mix of
 // diamond/sphere/cube-ish silhouettes for a less uniform look.
-float dustShapeVariation = 0.9;
+float dustShapeVariation = 0.6;
 
 // How much particle opacity varies per-particle, as a fraction of
 // dustOpacity. 0 = every particle equally opaque. 1 = some particles
 // can fade almost to nothing while others hit full dustOpacity.
-float dustOpacityVariation = 0.5;
-
-// Wind gusts: periodically sweeps ALL particles together in a shared
-// direction (layered on top of each particle's own independent drift),
-// and briefly stirs up extra density while a gust is active - distinct
-// from the per-particle jitter, which never moves particles as a group.
-float3 dustWindDir = float3(1.0, 0.3, 0.0); // world-space direction, doesn't need to be normalized
-float dustGustStrength = 30.0;              // world units of displacement at peak gust
-float dustGustSpeed = 0.7;                  // how fast gusts cycle
-float dustGustDensityBoost = 0.9;           // extra density multiplier at peak gust (stirred-up dust)
+float dustOpacityVariation = 0.7;
 
 // -- fogbox params --
 static const float NUM_FOG_VOLUMES = 3;
@@ -102,21 +93,34 @@ float fogRadi[NUM_FOG_VOLUMES][3];
 float fogColors[NUM_FOG_VOLUMES][3];
 float fogDensities[NUM_FOG_VOLUMES];
 
-// Horizontal gust drift on top of the existing vertical bob (center.z
-// already oscillates via cos/sin above) - makes the fog feel pushed
-// around by wind instead of just breathing up and down in place.
-// Bounded oscillation like the existing motion, not unbounded drift.
-float fogGustAmount = 40.0;   // world units of horizontal sway
-float fogGustSpeed = 0.15;    // how fast the sway cycles
+// Ground-hugging mist: thins fog toward the top of its volume so it
+// pools near the floor like real cave mist, rather than sitting as a
+// uniform density block top to bottom.
+// 0 = uniform density (old behavior), 1 = fully thins out at the top.
+float fogHeightFalloff = 0.7;
 
 // Cheap 3D value noise breaks up the smooth analytic box gradient into
-// wispy/patchy variation, sampled once per fog volume at roughly where
-// the camera ray enters that volume, and slowly scrolled over time so
-// the patchiness itself drifts like real fog would.
+// wispy/patchy variation, sampled once per pixel at the actual visible
+// surface position (reconstructed from the depth buffer), and slowly
+// scrolled over time so the patchiness itself drifts like real fog would.
+// Overall multiplier on final fog density - an easy dial to make fog
+// lighter/heavier without needing to touch the fogDensities data itself.
+float fogDensityScale = 0.65;
+
 // 0 = perfectly smooth (old behavior), higher = patchier/wispier.
+// Biased toward thinning rather than symmetric thicken/thin - real fog
+// reads as mostly-thin with occasional denser wisps, not oscillating
+// evenly above and below a baseline.
 float fogNoiseStrength = 0.24;
-float fogNoiseScale = 0.042;   // world-space frequency - lower = larger wisps
-float fogNoiseSpeed = 8;    // how fast the noise pattern scrolls
+float fogNoiseScale = 0.04;   // world-space frequency - lower = larger wisps
+
+// Organic swirling drift for the fog's internal noise pattern - built
+// from several independent sine terms at different speeds/phases so it
+// changes direction over time instead of scrolling in one straight line.
+// Depends only on `time`, never on eyepos/camera position, so it can't
+// read as tied to player movement.
+float fogFlowStrength = 200.0;  // world-unit-equivalent amplitude of the swirl
+float fogFlowSpeed = 0.02;     // how fast the swirl evolves
 
 // ---------------- constants ----------------
 
@@ -215,16 +219,6 @@ float GetDistOnly(float3 p)
 
     float r1 = frac(h.x * h.y * h.z * (h.x + h.y + h.z));
 
-    // Shared wind gust envelope - deliberately NOT derived from r1, so
-    // every particle feels the exact same gust at the same time (unlike
-    // the per-particle jitter below, which is deliberately decorrelated).
-    // Two off-beat sine waves avoid a too-regular, metronomic pulse.
-    float gustPhase1 = time * dustGustSpeed;
-    float gustPhase2 = time * dustGustSpeed * 0.37 + 1.7;
-    float gust = saturate(sin(gustPhase1) * 0.6 + sin(gustPhase2) * 0.4);
-    gust = pow(gust, 3.0); // sharpen into brief gusts rather than a smooth back-and-forth
-    float3 gustOffset = normalize(dustWindDir) * gust * dustGustStrength;
-
 
     float timeFactor = time * dustTimeScale + r1 * 6.2831;
 
@@ -247,7 +241,7 @@ float GetDistOnly(float3 p)
 
     float3 q =
         p -
-        (basePos + 2.0 + sphereOffset + gustOffset)
+        (basePos + 2.0 + sphereOffset)
         +
         eyepos;
 
@@ -264,8 +258,7 @@ float GetDistOnly(float3 p)
     // Continuous density: scales particle size smoothly rather than
     // gating whole cells on/off, so raising/lowering dustDensity reads
     // as a genuine density gradient instead of patches popping in/out.
-    // Also stirred up briefly by gusts (wind kicking up more visible dust).
-    float densityScale = saturate(dustDensity / 20.0) * (1.0 + gust * dustGustDensityBoost);
+    float densityScale = saturate(dustDensity / 20.0);
     radius *= densityScale;
 
     // Per-particle shape variation: jitter the superellipsoid exponent
@@ -342,8 +335,10 @@ float RayMarch(float3 ro,float3 rd)
 
 // ---------------- fogbox: box density ----------------
 
-// https://www.shadertoy.com/view/Ml3GR8
-float boxDensity(float3 wpos, float3 wdir, float3 p, float3 r, float dbuffer) {
+// https://www.shadertoy.com/view/Ml3GR8 (ray-box intersection only - the
+// original closed-form density integral below was replaced with a short
+// raymarch, see comment further down for why)
+float boxDensity(float3 wpos, float3 wdir, float3 p, float3 r, float dbuffer, float volumeSeed) {
     float3 d = wdir;
     float3 o = wpos - p;
 
@@ -360,36 +355,70 @@ float boxDensity(float3 wpos, float3 wdir, float3 p, float3 r, float dbuffer) {
 
     tN = max(tN, 0.0);
 
+    float wl = waterlevel - 5;
     float3 waterProbe = wpos + wdir * tF;
-    if (wpos.z > waterlevel && waterProbe.z < waterlevel)
-        tF = (1.0 - (waterlevel-waterProbe.z) / (wpos.z-waterProbe.z)) * tF;
-
+    if (wpos.z > wl && waterProbe.z < wl)
+        tF = (1.0 - (wl-waterProbe.z) / (wpos.z-waterProbe.z)) * tF;
 
     tF = min(tF, dbuffer);
 
-    o += tN*d; tF = tF-tN; tN = 0.0;
+    if (tF <= tN) return 0.0;
 
-    float3 a = 1.0-(o*o)/(r*r);
-    float3 b = -2.0*(o*d)/(r*r);
-    float3 c = -(d*d)/(r*r);
+    // Short raymarch through the box interval instead of the old smooth
+    // closed-form integral: that approach could only ever multiply a
+    // single flat noise value onto the whole ray's aggregate density,
+    // which can't actually break up a shape that's still a hard analytic
+    // box underneath - it just flickered the box's overall opacity.
+    // Sampling noise (and an edge falloff) at several actual positions
+    // along the ray gives real per-position variation, and rounding the
+    // box's corners via distance-from-center falloff keeps it from
+    // reading as a rigid rectangle.
+    static const int FOG_SAMPLES = 6;
+    float stepSize = (tF - tN) / FOG_SAMPLES;
 
-    float t1 = tF;
-    float t2 = t1*t1;
-    float t3 = t2*t1;
-    float t4 = t2*t2;
-    float t5 = t2*t3;
-    float t6 = t3*t3;
-    float t7 = t3*t4;
+    // Swirling flow offset - purely a function of time, so it's identical
+    // regardless of where the camera is standing or looking. Several
+    // sine terms at different speeds/phases per axis avoid a straight-
+    // line drift, giving an organic, direction-changing "swerve" instead.
+    float ft = time * fogFlowSpeed;
+    float3 flowOffset = float3(
+        sin(ft * 1.0 + 1.3) * 0.7 + cos(ft * 0.63 + 4.1) * 0.5,
+        cos(ft * 0.81 + 2.7) * 0.7 + sin(ft * 0.45 + 0.6) * 0.5,
+        sin(ft * 0.54 + 3.9) * 0.4
+    ) * fogFlowStrength;
 
-    float f = (t1/1.0) * (a.x*a.y*a.z)
-            + (t2/2.0) * (a.x*a.y*b.z + a.x*b.y*a.z + b.x*a.y*a.z)
-            + (t3/3.0) * (a.x*a.y*c.z + a.x*b.y*b.z + a.x*c.y*a.z + b.x*a.y*b.z + b.x*b.y*a.z + c.x*a.y*a.z)
-            + (t4/4.0) * (a.x*b.y*c.z + a.x*c.y*b.z + b.x*a.y*c.z + b.x*b.y*b.z + b.x*c.y*a.z + c.x*a.y*b.z + c.x*b.y*a.z)
-            + (t5/5.0) * (a.x*c.y*c.z + b.x*b.y*c.z + b.x*c.y*b.z + c.x*a.y*c.z + c.x*b.y*b.z + c.x*c.y*a.z)
-            + (t6/6.0) * (b.x*c.y*c.z + c.x*b.y*c.z + c.x*c.y*b.z)
-            + (t7/7.0) * (c.x*c.y*c.z);
+    float accum = 0.0;
+    [unroll]
+    for (int s = 0; s < FOG_SAMPLES; s++) {
+        float t = tN + stepSize * (s + 0.5);
+        float3 samplePos = wpos + wdir * t;
 
-    return f - (f * 0.41 * sin(time/45));
+        // Position relative to box center - small, stable magnitude
+        // (unlike raw wpos/samplePos, which can be tens of thousands of
+        // world units and suffer float precision loss when hashed, which
+        // reads as noise "swimming" with camera movement).
+        float3 localSamplePos = samplePos - p;
+
+        // Position within the box in -1..1 local space, used to round the
+        // silhouette off into more of a soft blob than a hard rectangle.
+        float3 localPos = localSamplePos / r;
+        float edgeFalloff = saturate(1.0 - dot(localPos, localPos));
+
+        float noiseVal = noiseFog((localSamplePos + flowOffset + float3(volumeSeed, 0.0, 0.0)) * fogNoiseScale);
+        // Biased toward thinning (never exceeds baseline) rather than
+        // symmetric thicken/thin - reads as patchy wisps, not pulsing.
+        float localDensity = lerp(1.0 - fogNoiseStrength, 1.0, noiseVal) * edgeFalloff;
+
+        // Ground-hugging mist: thin toward the top of the volume.
+        float heightNorm = saturate((samplePos.z - (p.z - r.z)) / max(0.01, r.z * 2.0));
+        localDensity *= lerp(1.0, 1.0 - fogHeightFalloff, heightNorm);
+
+        accum += localDensity * stepSize;
+    }
+
+    accum *= fogDensityScale;
+
+    return accum;
 }
 
 // ---------------- combined pass ----------------
@@ -474,29 +503,12 @@ float4 dustfog(float2 tex : TEXCOORD0, float2 vpos : VPOS) : COLOR0 {
     for (int i = 0; i < NUM_FOG_VOLUMES; i++) {
 
         float3 center = float3(fogCenters[i]);
-        center.z -= (((i + 2) * 320) - 250) * cos(time/60);
-        // horizontal gust sway, decorrelated per volume via the i-based phase offset
-        center.x += fogGustAmount * sin(time * fogGustSpeed + i * 2.1);
-        center.y += fogGustAmount * cos(time * fogGustSpeed * 0.8 + i * 1.3);
-
         float3 radius = float3(fogRadi[i]);
-        radius.z += (((i + 2) * 150) - 60) * sin(time/25);
 
-        float density = boxDensity(pos, dir, center, radius, depth);
+        float density = boxDensity(pos, dir, center, radius, depth, i * 173.0);
         if (density > 0.0) {
             float fogScalar = 1.0 / sqrt(dot(radius, radius));
             density = density * fogScalar * fogDensities[i];
-
-            // Break up the smooth analytic gradient with drifting patchiness.
-            // Sampled at roughly where this ray enters the volume, so
-            // different screen pixels see different wisps rather than a
-            // uniform per-volume tint.
-            float3 rdN = normalize(dir);
-            float tEstimate = max(0.0, dot(center - pos, rdN));
-            float3 samplePoint = pos + rdN * tEstimate;
-            float3 windScroll = normalize(dustWindDir) * time * fogNoiseSpeed;
-            float noiseVal = noiseFog((samplePoint + windScroll) * fogNoiseScale);
-            density *= lerp(1.0 - fogNoiseStrength, 1.0 + fogNoiseStrength, noiseVal);
 
             float3 fogColor = float3(fogColors[i]);
             color = lerp(fogColor * fogColor, color, exp(-0.5 * density));
