@@ -33,10 +33,10 @@ float fov;
 // Density:
 // 0   = no particles
 // 20  = maximum particles
-float dustDensity = 4.0;
+float dustDensity = 5.0;
 
 // Particle size multiplier
-float dustSize = 1.8;
+float dustSize = 2.0;
 
 // Distance between particle cells
 float dustCellSize = 45.0;
@@ -51,7 +51,7 @@ float dustMotionScale = 6.0;
 // 1 = diamond
 // 2 = sphere
 // 4+ = cube-like
-float dustShape = 1.85;
+float dustShape = 1.65;
 
 // Raymarch limits
 float dustMaxDistance = 1200.0;
@@ -70,7 +70,7 @@ float dustMaterialBias = 0.25;
 // 0   = invisible
 // 1   = old strength
 // 0.15-0.35 = natural cave dust
-float dustOpacity = 0.15;
+float dustOpacity = 0.18;
 
 // Neutral fallback color used when no fog volume is nearby (avoids dust
 // tinting toward black - see dustTint fallback in the main pass).
