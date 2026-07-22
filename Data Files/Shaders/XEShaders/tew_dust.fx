@@ -36,7 +36,7 @@ float fov;
 float dustDensity = 5.0;
 
 // Particle size multiplier
-float dustSize = 2.0;
+float dustSize = 2.5;
 
 // Distance between particle cells
 float dustCellSize = 45.0;
@@ -79,7 +79,7 @@ float3 dustBaseColor = float3(0.85, 0.82, 0.75);
 // How much the particle shape exponent (dustShape) varies per-particle.
 // 0 = every particle uses exactly dustShape. Higher = more mix of
 // diamond/sphere/cube-ish silhouettes for a less uniform look.
-float dustShapeVariation = 0.6;
+float dustShapeVariation = 0.7;
 
 // How much particle opacity varies per-particle, as a fraction of
 // dustOpacity. 0 = every particle equally opaque. 1 = some particles
@@ -97,7 +97,7 @@ float fogDensities[NUM_FOG_VOLUMES];
 // pools near the floor like real cave mist, rather than sitting as a
 // uniform density block top to bottom.
 // 0 = uniform density (old behavior), 1 = fully thins out at the top.
-float fogHeightFalloff = 0.7;
+float fogHeightFalloff = 0.65;
 
 // Cheap 3D value noise breaks up the smooth analytic box gradient into
 // wispy/patchy variation, sampled once per pixel at the actual visible
@@ -105,22 +105,22 @@ float fogHeightFalloff = 0.7;
 // scrolled over time so the patchiness itself drifts like real fog would.
 // Overall multiplier on final fog density - an easy dial to make fog
 // lighter/heavier without needing to touch the fogDensities data itself.
-float fogDensityScale = 0.65;
+float fogDensityScale = 0.60;
 
 // 0 = perfectly smooth (old behavior), higher = patchier/wispier.
 // Biased toward thinning rather than symmetric thicken/thin - real fog
 // reads as mostly-thin with occasional denser wisps, not oscillating
 // evenly above and below a baseline.
-float fogNoiseStrength = 0.24;
-float fogNoiseScale = 0.04;   // world-space frequency - lower = larger wisps
+float fogNoiseStrength = 0.35;
+float fogNoiseScale = 0.023;   // world-space frequency - lower = larger wisps
 
 // Organic swirling drift for the fog's internal noise pattern - built
 // from several independent sine terms at different speeds/phases so it
 // changes direction over time instead of scrolling in one straight line.
 // Depends only on `time`, never on eyepos/camera position, so it can't
 // read as tied to player movement.
-float fogFlowStrength = 200.0;  // world-unit-equivalent amplitude of the swirl
-float fogFlowSpeed = 0.02;     // how fast the swirl evolves
+float fogFlowStrength = 800.0;  // world-unit-equivalent amplitude of the swirl
+float fogFlowSpeed = 0.03;     // how fast the swirl evolves
 
 // ---------------- constants ----------------
 
@@ -501,6 +501,15 @@ float4 dustfog(float2 tex : TEXCOORD0, float2 vpos : VPOS) : COLOR0 {
 
     [loop]
     for (int i = 0; i < NUM_FOG_VOLUMES; i++) {
+
+        // Skip unused slots entirely - interior.lua only ever populates
+        // one of the 3 volumes, leaving the other 2 permanently zeroed
+        // (radius = (0,0,0)). Without this guard, a zero-radius volume
+        // can fall through boxDensity's early-out in edge cases and hit
+        // a genuine divide-by-zero (both fogScalar below and localPos
+        // inside boxDensity divide by radius), producing NaN/Inf pixels -
+        // a very plausible cause of unpredictable per-frame flicker.
+        if (fogDensities[i] <= 0.0) continue;
 
         float3 center = float3(fogCenters[i]);
         float3 radius = float3(fogRadi[i]);
