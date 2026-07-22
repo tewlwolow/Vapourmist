@@ -1,3 +1,4 @@
+int mgeflags = 14;
 
 // ============================================================
 // Combined underwater/cave dust raymarch + volumetric fogbox
