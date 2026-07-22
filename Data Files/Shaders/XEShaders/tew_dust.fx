@@ -1,4 +1,3 @@
-int mgeflags = 14;
 
 // ============================================================
 // Combined underwater/cave dust raymarch + volumetric fogbox
@@ -33,7 +32,7 @@ float fov;
 // Density:
 // 0   = no particles
 // 20  = maximum particles
-float dustDensity = 5.0;
+float dustDensity = 4.0;
 
 // Particle size multiplier
 float dustSize = 2.5;
@@ -42,7 +41,7 @@ float dustSize = 2.5;
 float dustCellSize = 45.0;
 
 // Animation speed
-float dustTimeScale = 0.15;
+float dustTimeScale = 0.12;
 
 // Movement amplitude
 float dustMotionScale = 6.0;
@@ -51,7 +50,7 @@ float dustMotionScale = 6.0;
 // 1 = diamond
 // 2 = sphere
 // 4+ = cube-like
-float dustShape = 1.65;
+float dustShape = 1.34;
 
 // Raymarch limits
 float dustMaxDistance = 1200.0;
@@ -70,7 +69,7 @@ float dustMaterialBias = 0.25;
 // 0   = invisible
 // 1   = old strength
 // 0.15-0.35 = natural cave dust
-float dustOpacity = 0.18;
+float dustOpacity = 0.15;
 
 // Neutral fallback color used when no fog volume is nearby (avoids dust
 // tinting toward black - see dustTint fallback in the main pass).
@@ -87,24 +86,25 @@ float dustShapeVariation = 0.7;
 float dustOpacityVariation = 0.7;
 
 // -- fogbox params --
-static const float NUM_FOG_VOLUMES = 3;
-float fogCenters[NUM_FOG_VOLUMES][3];
-float fogRadi[NUM_FOG_VOLUMES][3];
-float fogColors[NUM_FOG_VOLUMES][3];
-float fogDensities[NUM_FOG_VOLUMES];
+// Single fog volume, matching tew_fogbox.fx - interior.lua only ever
+// registers one fog ID against this shader, so no array/indexing needed.
+float3 fogCenter;
+float3 fogRadius;
+float3 fogColor;
+float fogDensity;
 
 // Ground-hugging mist: thins fog toward the top of its volume so it
 // pools near the floor like real cave mist, rather than sitting as a
 // uniform density block top to bottom.
 // 0 = uniform density (old behavior), 1 = fully thins out at the top.
-float fogHeightFalloff = 0.65;
+float fogHeightFalloff = 0.8;
 
 // Cheap 3D value noise breaks up the smooth analytic box gradient into
 // wispy/patchy variation, sampled once per pixel at the actual visible
 // surface position (reconstructed from the depth buffer), and slowly
 // scrolled over time so the patchiness itself drifts like real fog would.
 // Overall multiplier on final fog density - an easy dial to make fog
-// lighter/heavier without needing to touch the fogDensities data itself.
+// lighter/heavier without needing to touch the fogDensity data itself.
 float fogDensityScale = 0.60;
 
 // 0 = perfectly smooth (old behavior), higher = patchier/wispier.
@@ -120,7 +120,7 @@ float fogNoiseScale = 0.023;   // world-space frequency - lower = larger wisps
 // Depends only on `time`, never on eyepos/camera position, so it can't
 // read as tied to player movement.
 float fogFlowStrength = 800.0;  // world-unit-equivalent amplitude of the swirl
-float fogFlowSpeed = 0.03;     // how fast the swirl evolves
+float fogFlowSpeed = 0.06;     // how fast the swirl evolves
 
 // ---------------- constants ----------------
 
@@ -338,7 +338,7 @@ float RayMarch(float3 ro,float3 rd)
 // https://www.shadertoy.com/view/Ml3GR8 (ray-box intersection only - the
 // original closed-form density integral below was replaced with a short
 // raymarch, see comment further down for why)
-float boxDensity(float3 wpos, float3 wdir, float3 p, float3 r, float dbuffer, float volumeSeed) {
+float boxDensity(float3 wpos, float3 wdir, float3 p, float3 r, float dbuffer) {
     float3 d = wdir;
     float3 o = wpos - p;
 
@@ -404,7 +404,7 @@ float boxDensity(float3 wpos, float3 wdir, float3 p, float3 r, float dbuffer, fl
         float3 localPos = localSamplePos / r;
         float edgeFalloff = saturate(1.0 - dot(localPos, localPos));
 
-        float noiseVal = noiseFog((localSamplePos + flowOffset + float3(volumeSeed, 0.0, 0.0)) * fogNoiseScale);
+        float noiseVal = noiseFog((localSamplePos + flowOffset) * fogNoiseScale);
         // Biased toward thinning (never exceeds baseline) rather than
         // symmetric thicken/thin - reads as patchy wisps, not pulsing.
         float localDensity = lerp(1.0 - fogNoiseStrength, 1.0, noiseVal) * edgeFalloff;
@@ -429,21 +429,12 @@ float4 dustfog(float2 tex : TEXCOORD0, float2 vpos : VPOS) : COLOR0 {
     float3 v = toWorld(tex);           // un-normalized world ray (used by both passes)
     float depth = sample0(s2, tex).r;  // shared depth buffer sample
 
-    // Density-weighted average of the fog colors - used to tint dust particles
-    // so they match whichever fog volume currently dominates the scene.
-    // Falls back to dustBaseColor when little/no fog is nearby, instead of
-    // dividing by a near-zero weight and going black.
-    float3 fogColorSum = float3(0.0, 0.0, 0.0);
-    float fogDensitySum = 0.0;
-    [unroll]
-    for (int fc = 0; fc < NUM_FOG_VOLUMES; fc++) {
-        fogColorSum += float3(fogColors[fc]) * fogDensities[fc];
-        fogDensitySum += fogDensities[fc];
-    }
-    float3 fogAvgColor = fogColorSum / max(fogDensitySum, 0.0001);
-    float fogInfluence = saturate(fogDensitySum);
-    float3 dustTint = lerp(dustBaseColor, fogAvgColor, fogInfluence);
-    float3 dustTintLinear = dustTint * dustTint; // approx gamma->linear, matches the fog loop below
+    // Fog color used to tint dust particles so they match the current
+    // fog volume. Falls back to dustBaseColor when there's little/no
+    // fog nearby, instead of tinting toward black.
+    float fogInfluence = saturate(fogDensity);
+    float3 dustTint = lerp(dustBaseColor, fogColor, fogInfluence);
+    float3 dustTintLinear = dustTint * dustTint; // approx gamma->linear, matches the fog pass below
 
     // ================= DUST PASS =================
     float dm = length(toView(tex));
@@ -499,27 +490,14 @@ float4 dustfog(float2 tex : TEXCOORD0, float2 vpos : VPOS) : COLOR0 {
     // gamma -> linear
     color = pow(color, 2.2);
 
-    [loop]
-    for (int i = 0; i < NUM_FOG_VOLUMES; i++) {
-
-        // Skip unused slots entirely - interior.lua only ever populates
-        // one of the 3 volumes, leaving the other 2 permanently zeroed
-        // (radius = (0,0,0)). Without this guard, a zero-radius volume
-        // can fall through boxDensity's early-out in edge cases and hit
-        // a genuine divide-by-zero (both fogScalar below and localPos
-        // inside boxDensity divide by radius), producing NaN/Inf pixels -
-        // a very plausible cause of unpredictable per-frame flicker.
-        if (fogDensities[i] <= 0.0) continue;
-
-        float3 center = float3(fogCenters[i]);
-        float3 radius = float3(fogRadi[i]);
-
-        float density = boxDensity(pos, dir, center, radius, depth, i * 173.0);
+    // Single fog volume - interior.lua only ever registers one (FOG_ID
+    // "tew_interior").
+    if (fogDensity > 0.0) {
+        float density = boxDensity(pos, dir, fogCenter, fogRadius, depth);
         if (density > 0.0) {
-            float fogScalar = 1.0 / sqrt(dot(radius, radius));
-            density = density * fogScalar * fogDensities[i];
+            float fogScalar = 1.0 / sqrt(dot(fogRadius, fogRadius));
+            density = density * fogScalar * fogDensity;
 
-            float3 fogColor = float3(fogColors[i]);
             color = lerp(fogColor * fogColor, color, exp(-0.5 * density));
         }
     }

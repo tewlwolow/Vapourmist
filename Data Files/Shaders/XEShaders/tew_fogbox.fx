@@ -1,13 +1,12 @@
 int mgeflags = 9;
 // Adapted to MGEXE by G7 and Safebox, modified by tewlwolow
 
-static const float NUM_FOG_VOLUMES = 3;
-
-// lua variables
-float fogCenters[NUM_FOG_VOLUMES][3];
-float fogRadi[NUM_FOG_VOLUMES][3];
-float fogColors[NUM_FOG_VOLUMES][3];
-float fogDensities[NUM_FOG_VOLUMES];
+// lua variables - single fog volume (mistShader.lua only ever registers
+// one fog ID against this shader, so no need for a multi-slot array)
+float3 fogCenter;
+float3 fogRadius;
+float3 fogColor;
+float fogDensity;
 
 float fognearstart;
 float fognearrange;
@@ -118,27 +117,23 @@ float4 draw(float2 tex : TEXCOORD, float2 vpos : VPOS) : COLOR0 {
     // gamma -> linear
     color = pow(color, 2.2);
 
-    // draw fog volumes
-    for (int i = 0; i < NUM_FOG_VOLUMES; i++) {
+    // draw the fog volume (was index 0 of a 3-slot loop - the per-index
+    // breathing amplitude formula ((i+2)*320-250 etc) is preserved here
+    // evaluated at i=0, so behavior is unchanged from before)
+    if (fogDensity > 0.0) {
+        float3 center = fogCenter;
+        center.z -= 390 * cos(time/60);
 
-        float3 center = float3(fogCenters[i]);
-        center.z -= (((i + 2) * 320) - 250) * cos(time/60);
-
-        float3 radius = float3(fogRadi[i]);
-        radius.z += (((i + 2) * 150) - 60) * sin(time/25);
+        float3 radius = fogRadius;
+        radius.z += 240 * sin(time/25);
 
         float density = boxDensity(pos, dir, center, radius, depth);
         if (density > 0.0) {
             // apply lua config
             float fogScalar = 1.0 / sqrt(dot(radius, radius));
-            density = density * fogScalar * fogDensities[i];
-
-            // fog blending
-            // float dist = length(dir) * depth;
-            // float fog = saturate((fognearrange - dist) / (fognearrange - fognearstart)) * 0.8;
+            density = density * fogScalar * fogDensity;
 
             // do the fog stuff
-            float3 fogColor = float3(fogColors[i]);
             color = lerp(fogColor * fogColor, color, exp(-0.5 * density));
         }
     }
