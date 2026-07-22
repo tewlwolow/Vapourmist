@@ -227,8 +227,8 @@ local function addFog(cell)
 	)
 
 	shader.setValue {
-		shader = SHADER_NAME,
-		param = "waterLevel",
+		shaderName = SHADER_NAME,
+		param = "waterlevel",
 		value = calcZPos,
 	}
 end
