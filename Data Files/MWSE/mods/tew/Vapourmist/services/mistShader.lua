@@ -6,12 +6,12 @@ local util = require("tew.Vapourmist.components.util")
 local debugLog = util.debugLog
 local config = require("tew.Vapourmist.config")
 
-local CELL_SIZE = 8192
-
 -- Constants
 local SHADER_NAME = "tew_fogbox"
 local FOG_ID = "tew_mist"
-local MAX_DISTANCE = CELL_SIZE * 3
+
+local CELL_SIZE = 8192
+local CUTOFF_COEFF = 2
 local BASE_DEPTH = CELL_SIZE / 8
 local TIMER_DURATION = 0.3
 
@@ -62,13 +62,16 @@ local densities = {
     ["Blizzard"] = 10,
 }
 
+local drawDistance = mge.distantLandRenderConfig.drawDistance
+local size = (drawDistance * CELL_SIZE) / CUTOFF_COEFF
+
 local fogParams = {
     color = tes3vector3.new(),
     center = tes3vector3.new(),
 
     radius = tes3vector3.new(
-        MAX_DISTANCE,
-        MAX_DISTANCE,
+        size,
+        size,
         BASE_DEPTH
     ),
 
