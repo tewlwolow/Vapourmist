@@ -6,11 +6,13 @@ local util = require("tew.Vapourmist.components.util")
 local debugLog = util.debugLog
 local config = require("tew.Vapourmist.config")
 
+local CELL_SIZE = 8192
+
 -- Constants
 local SHADER_NAME = "tew_fogbox"
 local FOG_ID = "tew_mist"
-local MAX_DISTANCE = 8192 * 3
-local BASE_DEPTH = 8192 / 8
+local MAX_DISTANCE = CELL_SIZE * 3
+local BASE_DEPTH = CELL_SIZE / 8
 local TIMER_DURATION = 0.3
 
 local FADE_SECONDS = 10 -- Fade duration in seconds
