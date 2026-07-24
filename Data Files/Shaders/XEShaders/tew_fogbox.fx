@@ -16,6 +16,15 @@ float4x4 mview;
 float4x4 mproj;
 float time;
 
+// Sun direction/color, confirmed against Sunshafts.fx (same standalone
+// post-process convention as this shader - plain uniforms, not the
+// "shared" ones from XE_Common.fx). sunpos points from sun toward the
+// camera, so -normalize(sunpos) is the direction toward the sun. sunvis
+// is 0-1 sun visibility (occluded by horizon/weather/etc).
+float3 sunpos;
+float3 suncol;
+float sunvis;
+
 texture lastshader;
 texture depthframe;
 
@@ -38,7 +47,9 @@ float3 toWorld(float2 tex) {
 //
 // https://www.shadertoy.com/view/Ml3GR8
 //
-float boxDensity(float3 wpos, float3 wdir, float3 p, float3 r, float dbuffer) {
+float boxDensity(float3 wpos, float3 wdir, float3 p, float3 r, float dbuffer, out float tNear) {
+    tNear = 0.0;
+
     float3 d = wdir;
     float3 o = wpos - p;
 
@@ -57,6 +68,7 @@ float boxDensity(float3 wpos, float3 wdir, float3 p, float3 r, float dbuffer) {
 
     // clip integration segment from camera to dbuffer
     tN = max(tN, 0.0);
+    tNear = tN; // distance to where the ray enters the box - used to sample world position for the drift noise
 
     float waterlevel = -5.0;
     float3 waterProbe = wpos + wdir * tF;
@@ -107,7 +119,50 @@ float boxDensity(float3 wpos, float3 wdir, float3 p, float3 r, float dbuffer) {
 // these offsets are static, not animated.)
 static const float LAYER_CENTER_Z_FRAC[3] = { -0.5, 0.0, 0.6 };  // fraction of radius.z
 static const float LAYER_RADIUS_Z_SCALE[3] = { 0.5, 0.85, 1.3 };
-static const float LAYER_DENSITY_SCALE[3]  = { 1.0, 0.55, 0.25 };
+
+// Exponential height falloff (replaces the old fixed per-layer density
+// weights): fog thins out the higher above the base fogCenter.z it sits,
+// like real ground fog, rather than each layer having an arbitrary fixed
+// opacity. Bigger = thinner fog, faster falloff with height. Tune to taste
+// against your world's Z scale.
+static const float HEIGHT_FALLOFF_RATE = 0.0015;
+
+// Slow noise-driven drift. Scrolls linearly with time (not sin/cos), so it
+// doesn't produce the uniform screen-wide brightness pulsing that caused
+// the original flicker - it's spatial noise sliding past, not a global
+// oscillation. DRIFT_SPEED is in world units/sec (same units as position),
+// and gets scaled into noise-space together with position below - it must
+// NOT be added post-scale, or the pattern scrolls a full noise cell every
+// fraction of a second.
+static const float NOISE_SCALE = 0.00035;
+static const float2 DRIFT_SPEED = float2(40.0, 22.0); // world units/sec - gentle drift
+static const float DRIFT_MIN = 0.8;
+static const float DRIFT_MAX = 1.2;
+
+// Cheap forward-scatter approximation: fog brightens/warms when looking
+// toward the sun, like real dawn/dusk mist. Uses the actual sun color
+// (suncol) rather than a guessed tint. Exponent controls the halo's
+// tightness - lower = broader, softer glow (more like sunshafts falloff),
+// higher = a tighter hotspot right around the sun.
+static const float SUN_GLOW_EXPONENT = 4.0;
+static const float SUN_GLOW_STRENGTH = 0.6;
+
+float hash21(float2 p) {
+    p = frac(p * float2(123.34, 456.21));
+    p += dot(p, p + 45.32);
+    return frac(p.x * p.y);
+}
+
+float noise2D(float2 p) {
+    float2 i = floor(p);
+    float2 f = frac(p);
+    float a = hash21(i);
+    float b = hash21(i + float2(1, 0));
+    float c = hash21(i + float2(0, 1));
+    float d = hash21(i + float2(1, 1));
+    float2 u = f * f * (3.0 - 2.0 * f);
+    return lerp(lerp(a, b, u.x), lerp(c, d, u.x), u.y);
+}
 
 // Interleaved gradient noise - per-pixel pseudo-random dither that never
 // tiles visibly (unlike a small ordered/Bayer matrix, which becomes its
@@ -129,6 +184,21 @@ float4 draw(float2 tex : TEXCOORD, float2 vpos : VPOS) : COLOR0 {
     // gamma -> linear
     color = pow(color, 2.2);
 
+    // sun-relative glow: computed once per pixel, same for every layer,
+    // since it only depends on view direction vs sun direction.
+    // normalize(sunpos) is the direction toward the sun. dir must be
+    // normalized before the dot product too - toWorld() returns a
+    // direction whose length varies across the screen (perspective), and
+    // dotting an unnormalized vector against sunDir stretches the glow
+    // asymmetrically with aspect ratio, turning a round halo into a
+    // horizontal streak once raised to a high power. sunvis fades the
+    // glow out when the sun is occluded (below horizon, weather, etc).
+    float3 dirN = normalize(dir);
+    float3 sunDir = (dot(sunpos, sunpos) > 0.0001) ? normalize(sunpos) : float3(0, 0, 1);
+    float sunDot = saturate(dot(dirN, sunDir));
+    float sunGlow = pow(sunDot, SUN_GLOW_EXPONENT) * SUN_GLOW_STRENGTH * saturate(sunvis);
+    float3 litFogColor = saturate(fogColor + suncol * sunGlow);
+
     // draw the fog as 3 stacked static layers (low/dense, mid, high/wispy)
     // built from the single lua-supplied fogCenter/fogRadius/fogDensity
     if (fogDensity > 0.0) {
@@ -140,14 +210,27 @@ float4 draw(float2 tex : TEXCOORD, float2 vpos : VPOS) : COLOR0 {
             float3 radius = fogRadius;
             radius.z *= LAYER_RADIUS_Z_SCALE[i];
 
-            float density = boxDensity(pos, dir, center, radius, depth);
+            float tNear;
+            float density = boxDensity(pos, dir, center, radius, depth, tNear);
             if (density > 0.0) {
                 // apply lua config
                 float fogScalar = 1.0 / sqrt(dot(radius, radius));
-                density = density * fogScalar * fogDensity * LAYER_DENSITY_SCALE[i];
+                density = density * fogScalar * fogDensity;
+
+                // exponential height falloff above the base fogCenter.z
+                float heightAboveBase = max(0.0, center.z - fogCenter.z);
+                density *= exp(-heightAboveBase * HEIGHT_FALLOFF_RATE);
+
+                // slow drifting noise, sampled at the world XY where the
+                // ray enters this layer, scrolled linearly by time - both
+                // position and drift are scaled into noise-space together
+                float3 entryPos = pos + dir * tNear;
+                float2 driftUV = (entryPos.xy + time * DRIFT_SPEED) * NOISE_SCALE;
+                float n = noise2D(driftUV);
+                density *= lerp(DRIFT_MIN, DRIFT_MAX, n);
 
                 // do the fog stuff
-                color = lerp(fogColor * fogColor, color, exp(-0.5 * density));
+                color = lerp(litFogColor * litFogColor, color, exp(-0.5 * density));
             }
         }
     }
