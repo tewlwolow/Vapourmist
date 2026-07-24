@@ -33,7 +33,7 @@ float fov;
 // Density:
 // 0   = no particles
 // 20  = maximum particles
-float dustDensity = 4.0;
+float dustDensity = 5.0;
 
 // Particle size multiplier
 float dustSize = 2.5;
@@ -70,7 +70,7 @@ float dustMaterialBias = 0.25;
 // 0   = invisible
 // 1   = old strength
 // 0.15-0.35 = natural cave dust
-float dustOpacity = 0.15;
+float dustOpacity = 0.16;
 
 // Neutral fallback color used when no fog volume is nearby (avoids dust
 // tinting toward black - see dustTint fallback in the main pass).
@@ -113,7 +113,7 @@ float fogDensityScale = 0.60;
 // reads as mostly-thin with occasional denser wisps, not oscillating
 // evenly above and below a baseline.
 float fogNoiseStrength = 0.35;
-float fogNoiseScale = 0.023;   // world-space frequency - lower = larger wisps
+float fogNoiseScale = 0.013;   // world-space frequency - lower = larger wisps
 
 // Organic swirling drift for the fog's internal noise pattern - built
 // from several independent sine terms at different speeds/phases so it
