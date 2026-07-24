@@ -33,13 +33,13 @@ float fov;
 // Density:
 // 0   = no particles
 // 20  = maximum particles
-float dustDensity = 5.0;
+float dustDensity = 5.5;
 
 // Particle size multiplier
-float dustSize = 2.5;
+float dustSize = 2.9;
 
 // Distance between particle cells
-float dustCellSize = 45.0;
+float dustCellSize = 43.0;
 
 // Animation speed
 float dustTimeScale = 0.12;
@@ -51,7 +51,7 @@ float dustMotionScale = 6.0;
 // 1 = diamond
 // 2 = sphere
 // 4+ = cube-like
-float dustShape = 1.34;
+float dustShape = 1.5;
 
 // Raymarch limits
 float dustMaxDistance = 1200.0;
@@ -70,7 +70,7 @@ float dustMaterialBias = 0.25;
 // 0   = invisible
 // 1   = old strength
 // 0.15-0.35 = natural cave dust
-float dustOpacity = 0.16;
+float dustOpacity = 0.18;
 
 // Neutral fallback color used when no fog volume is nearby (avoids dust
 // tinting toward black - see dustTint fallback in the main pass).
@@ -112,8 +112,8 @@ float fogDensityScale = 0.60;
 // Biased toward thinning rather than symmetric thicken/thin - real fog
 // reads as mostly-thin with occasional denser wisps, not oscillating
 // evenly above and below a baseline.
-float fogNoiseStrength = 0.35;
-float fogNoiseScale = 0.013;   // world-space frequency - lower = larger wisps
+float fogNoiseStrength = 0.55;
+float fogNoiseScale = 0.018;   // world-space frequency - lower = larger wisps
 
 // Organic swirling drift for the fog's internal noise pattern - built
 // from several independent sine terms at different speeds/phases so it
