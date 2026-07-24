@@ -94,18 +94,30 @@ float boxDensity(float3 wpos, float3 wdir, float3 p, float3 r, float dbuffer) {
             + (t6/6.0) * (b.x*c.y*c.z + c.x*b.y*c.z + c.x*c.y*b.z)
             + (t7/7.0) * (c.x*c.y*c.z);
 
-    return f - (f * 0.41 * sin(time/45));
+    return f;
 }
 
 // -------------------------------------------------------------- //
 
-// Ordered dithering matrix
-static const float DITHERING[4][4] = {
-    0.001176, 0.001961, -0.001176, -0.001699,
-    -0.000654, -0.000915, 0.000392, 0.000131,
-    -0.000131, -0.001961, 0.000654, 0.000915,
-    0.001699, 0.001438, -0.000392, -0.001438
-};
+// Static 3-layer stack, derived from the single lua-supplied fogCenter/
+// fogRadius/fogDensity. No lua/array changes needed - each layer is a
+// fixed offset/scale of the same base volume, giving a low dense layer,
+// a mid layer, and a thin wispy top layer instead of one uniform block.
+// (Restores the old 3-slot loop shape, minus the time-based breathing -
+// these offsets are static, not animated.)
+static const float LAYER_CENTER_Z_FRAC[3] = { -0.5, 0.0, 0.6 };  // fraction of radius.z
+static const float LAYER_RADIUS_Z_SCALE[3] = { 0.5, 0.85, 1.3 };
+static const float LAYER_DENSITY_SCALE[3]  = { 1.0, 0.55, 0.25 };
+
+// Interleaved gradient noise - per-pixel pseudo-random dither that never
+// tiles visibly (unlike a small ordered/Bayer matrix, which becomes its
+// own visible pattern over large flat fog regions). Same cost as the old
+// matrix lookup, no extra texture needed.
+// http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare
+float interleavedGradientNoise(float2 vpos) {
+    float3 magic = float3(0.06711056, 0.00583715, 52.9829189);
+    return frac(magic.z * frac(dot(vpos, magic.xy)));
+}
 
 float4 draw(float2 tex : TEXCOORD, float2 vpos : VPOS) : COLOR0 {
     float3 color = tex2D(s0, tex);
@@ -117,24 +129,26 @@ float4 draw(float2 tex : TEXCOORD, float2 vpos : VPOS) : COLOR0 {
     // gamma -> linear
     color = pow(color, 2.2);
 
-    // draw the fog volume (was index 0 of a 3-slot loop - the per-index
-    // breathing amplitude formula ((i+2)*320-250 etc) is preserved here
-    // evaluated at i=0, so behavior is unchanged from before)
+    // draw the fog as 3 stacked static layers (low/dense, mid, high/wispy)
+    // built from the single lua-supplied fogCenter/fogRadius/fogDensity
     if (fogDensity > 0.0) {
-        float3 center = fogCenter;
-        center.z -= 390 * cos(time/60);
+        [unroll]
+        for (int i = 0; i < 3; i++) {
+            float3 center = fogCenter;
+            center.z += LAYER_CENTER_Z_FRAC[i] * fogRadius.z;
 
-        float3 radius = fogRadius;
-        radius.z += 240 * sin(time/25);
+            float3 radius = fogRadius;
+            radius.z *= LAYER_RADIUS_Z_SCALE[i];
 
-        float density = boxDensity(pos, dir, center, radius, depth);
-        if (density > 0.0) {
-            // apply lua config
-            float fogScalar = 1.0 / sqrt(dot(radius, radius));
-            density = density * fogScalar * fogDensity;
+            float density = boxDensity(pos, dir, center, radius, depth);
+            if (density > 0.0) {
+                // apply lua config
+                float fogScalar = 1.0 / sqrt(dot(radius, radius));
+                density = density * fogScalar * fogDensity * LAYER_DENSITY_SCALE[i];
 
-            // do the fog stuff
-            color = lerp(fogColor * fogColor, color, exp(-0.5 * density));
+                // do the fog stuff
+                color = lerp(fogColor * fogColor, color, exp(-0.5 * density));
+            }
         }
     }
 
@@ -143,7 +157,7 @@ float4 draw(float2 tex : TEXCOORD, float2 vpos : VPOS) : COLOR0 {
     color = pow(color, 1/2.2);
 
     // dithering!
-    float dithering = DITHERING[vpos.x % 4][vpos.y % 4];
+    float dithering = (interleavedGradientNoise(vpos) - 0.5) / 128.0;
     color += dithering;
 
     return float4(color, 1.0);
