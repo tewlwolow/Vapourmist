@@ -13,7 +13,7 @@ local MAX_DISTANCE = 8192 * 3
 local BASE_DEPTH = 8192 / 8
 local TIMER_DURATION = 0.3
 
-local FADE_SECONDS = 20 -- Fade duration in seconds for visual smoothness
+local FADE_SECONDS = 10 -- Fade duration in seconds
 
 local WtC = tes3.worldController.weatherController
 local WorldC = tes3.worldController
