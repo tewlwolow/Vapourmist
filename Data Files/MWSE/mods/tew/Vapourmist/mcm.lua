@@ -43,11 +43,7 @@ mainPage:createYesNoButton {
 }
 mainPage:createYesNoButton {
     label = "Enable shader-based mist in interiors?",
-    variable = registerVariable("interiorShader"),
-}
-mainPage:createYesNoButton {
-    label = "Enable NIF-based mist in interiors?",
-    variable = registerVariable("interiorNIF"),
+    variable = registerVariable("interior"),
 }
 
 mainPage:createSlider {

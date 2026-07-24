@@ -40,8 +40,6 @@ local services = {
 			event.register(tes3.event.weatherChangedImmediate, mistShader.onWeatherChangedImmediate)
 			event.register(tes3.event.weatherTransitionStarted, mistShader.onWeatherChanged)
 			event.register(tes3.event.uiActivated, mistShader.onWaitMenu, { filter = "MenuTimePass" })
-			event.register("VAPOURMIST:enteredUnderwater", shader.disableFog)
-			event.register("VAPOURMIST:exitedUnderwater", shader.enableFog)
 			mistShader.onLoaded()
 		end,
 		stop = function()
@@ -53,8 +51,6 @@ local services = {
 			event.unregister(tes3.event.weatherChangedImmediate, mistShader.onWeatherChangedImmediate)
 			event.unregister(tes3.event.weatherTransitionStarted, mistShader.onWeatherChanged)
 			event.unregister(tes3.event.uiActivated, mistShader.onWaitMenu, { filter = "MenuTimePass" })
-			event.unregister("VAPOURMIST:enteredUnderwater", shader.disableFog)
-			event.unregister("VAPOURMIST:exitedUnderwater", shader.enableFog)
 			mistShader.cleanup()
 		end,
 	},
@@ -84,23 +80,7 @@ local services = {
 	},
 
 	-- TODO: Redo - decouple, combine vtastek's underwater dust with fogbox; interior NIF out
-	interiorShader = {
-		init = function()
-			local interior = require("tew.Vapourmist.services.interior")
-			event.register(tes3.event.cellChanged, interior.onCellChanged, { priority = 500 })
-			event.register("VAPOURMIST:enteredUnderwater", interior.hideAll)
-			event.register("VAPOURMIST:exitedUnderwater", interior.unhideAll)
-			interior.onCellChanged()
-		end,
-		stop = function()
-			local interior = require("tew.Vapourmist.services.interior")
-			event.unregister(tes3.event.cellChanged, interior.onCellChanged, { priority = 500 })
-			event.unregister("VAPOURMIST:enteredUnderwater", interior.hideAll)
-			event.unregister("VAPOURMIST:exitedUnderwater", interior.unhideAll)
-			interior.removeAllFog()
-		end,
-	},
-	interiorNIF = {
+	interior = {
 		init = function()
 			local interior = require("tew.Vapourmist.services.interior")
 			event.register(tes3.event.cellChanged, interior.onCellChanged, { priority = 500 })
