@@ -33,10 +33,10 @@ float fov;
 // Density:
 // 0   = no particles
 // 20  = maximum particles
-float dustDensity = 5.5;
+float dustDensity = 4.2;
 
 // Particle size multiplier
-float dustSize = 2.9;
+float dustSize = 2.5;
 
 // Distance between particle cells
 float dustCellSize = 43.0;
@@ -232,46 +232,29 @@ float sdSuperShape(float3 p, float r, float n)
 float GetDistOnly(float3 p)
 {
     float invCell = 1.0 / dustCellSize;
+    float3 basePos = float3(-24900.0, -13000.0, 0.0);
 
-    float3 cellIndex = floor((p + eyepos) * invCell);
+    // Define particle identity and local coordinates from the SAME grid.
+    // Do not wrap coordinates after applying animated offsets: that makes
+    // the seed/shape jump at cell boundaries and can create flickering.
+    float3 gridPos = (p + eyepos - basePos - 2.0) * invCell;
+    float3 cellIndex = floor(gridPos);
+    float3 q = (frac(gridPos) - 0.5) * dustCellSize;
 
     float3 h = frac(cellIndex * 0.3183099 + 0.1) * 17.0;
-
     float r1 = frac(h.x * h.y * h.z * (h.x + h.y + h.z));
 
-
+    // Smooth, deterministic per-particle movement within its own cell.
     float timeFactor = time * dustTimeScale + r1 * 6.2831;
-
-    float3 phase =
-        float3(
-            -24900.0 * 0.5,
-            -13000.0 * 0.4,
-            0.0
-        )
-        +
-        timeFactor * float3(1.0,1.3,0.9);
-
-
+    float3 phase = float3(-12450.0, -5200.0, 0.0)
+                 + timeFactor * float3(1.0, 1.3, 0.9);
     float3 sphereOffset =
         (abs(frac(phase * 0.159155) * 4.0 - 2.0) - 1.0)
         * dustMotionScale;
+    q -= sphereOffset;
 
-
-    float3 basePos = float3(-24900.0,-13000.0,0.0);
-
-    float3 q =
-        p -
-        (basePos + 2.0 + sphereOffset)
-        +
-        eyepos;
-
-
-    q = frac(q * invCell) * dustCellSize
-        - dustCellSize * 0.5;
-
-    // Anisotropic stretch: gives each particle a slightly irregular,
-    // elongated/flattened silhouette per-axis rather than every particle
-    // being a perfectly symmetric blob - real dust flecks aren't uniform.
+    // Anisotropic stretch. Keep the distance estimate conservative by
+    // scaling it down by the largest coordinate scale factor.
     float3 stretch = 1.0 + dustStretchAmount * (float3(
         frac(r1 * 11.13),
         frac(r1 * 17.77),
@@ -279,98 +262,65 @@ float GetDistOnly(float3 p)
     ) - 0.5);
     q *= stretch;
 
-    float radius =
-        (0.1 + 0.4 * frac(r1 * 43.123))
-        * dustSize;
-
-
-    // Continuous density: scales particle size smoothly rather than
-    // gating whole cells on/off, so raising/lowering dustDensity reads
-    // as a genuine density gradient instead of patches popping in/out.
+    float radius = (0.1 + 0.4 * frac(r1 * 43.123)) * dustSize;
     float densityScale = saturate(dustDensity / 20.0);
     radius *= densityScale;
 
-    // Pooling boost: grows particles near the floor (real geometry, not
-    // just opacity), so dust is reliably hit by the raymarch even when
-    // looking straight down through a short vertical path, instead of
-    // only being visible when looking sideways across a long one.
     float worldZ = p.z + eyepos.z;
     float heightAboveFloor = max(0.0, worldZ - fogCenter.z);
     float heightRange = max(1.0, fogRadius.z * dustHeightFalloffRange);
     float heightNorm = saturate(heightAboveFloor / heightRange);
-    float poolBoost = lerp(1.0 + dustPoolingBoost, 1.0, smoothstep(0.0, 1.0, heightNorm));
+    float poolBoost = lerp(1.0 + dustPoolingBoost, 1.0,
+                           smoothstep(0.0, 1.0, heightNorm));
     radius *= poolBoost;
 
-    // Per-particle shape variation: jitter the superellipsoid exponent
-    // around dustShape so particles aren't all identical silhouettes.
     float shapeJitter = (frac(r1 * 29.71) - 0.5) * 2.0 * dustShapeVariation;
     float shapeN = max(1.0, dustShape + shapeJitter);
 
-    return sdSuperShape(q,radius,shapeN);
+    float dist = sdSuperShape(q, radius, shapeN);
+    return dist / max(max(stretch.x, stretch.y), stretch.z);
 }
 
 // VISUALS ONLY (Executed ONCE outside the loop)
 float GetMaterial(float3 p)
 {
     float invCell = 1.0 / dustCellSize;
+    float3 basePos = float3(-24900.0, -13000.0, 0.0);
+    float3 gridPos = (p + eyepos - basePos - 2.0) * invCell;
+    float3 cellIndex = floor(gridPos);
 
-    float3 cellIndex =
-        floor((p + eyepos) * invCell);
+    float3 h = frac(cellIndex * 0.3183099 + 0.1) * 17.0;
+    float r1 = frac(h.x * h.y * h.z * (h.x + h.y + h.z));
 
-
-    float3 h =
-        frac(cellIndex * 0.3183099 + 0.1)
-        * 17.0;
-
-
-    float r1 =
-        frac(h.x*h.y*h.z*(h.x+h.y+h.z));
-
-
-    float timeFactor =
-        time*dustTimeScale + r1*6.2831;
-
-
-    float3 phase =
-        float3(-24900.0*0.5,
-               -13000.0*0.4,
-               0.0)
-        +
-        timeFactor*float3(1.0,1.3,0.9);
-
-
-    float3 sphereOffset =
-        abs(frac(phase*0.159155)*4.0-2.0)-1.0;
-
-
-    return smoothstep(
-            0.0,
-            1.0,
-            sphereOffset.x+
-            sphereOffset.y+
-            sphereOffset.z
-        );
+    // Constant over the particle; no spatial mask, so it cannot create
+    // holes inside the mote. The same seed identifies the geometry above.
+    return lerp(0.85, 1.0, frac(r1 * 37.719));
 }
 
-float RayMarch(float3 ro,float3 rd,float maxRange)
+float RayMarch(float3 ro, float3 rd, float maxRange)
 {
-    float dO=0;
+    float dO = 0.0;
 
     [loop]
-    for(int i=0;i<128;i++)
+    for (int i = 0; i < 128; i++)
     {
-        float3 p=ro+dO*rd;
+        float3 p = ro + dO * rd;
+        float dS = GetDistOnly(p);
 
-        float dS=GetDistOnly(p);
+        // A hit is detected before stepping. Conservative stepping reduces
+        // overshoot from the approximate super-shape distance estimator.
+        if (dS <= dustSurfaceDistance)
+            return dO;
 
-        dO+=dS;
-
-        if(dS<dustSurfaceDistance ||
-           dO>maxRange)
-            break;
+        dO += max(dS * 0.5, dustSurfaceDistance * 0.5);
+        if (dO > maxRange)
+            return dO;
     }
 
-    return dO;
+    // If all iterations are used without finding a surface, report a miss.
+    // Returning dO here falsely treats the last ray position as a particle
+    // hit, which can create a large phantom/moving shape that masks other motes.
+    return maxRange + max(1.0, dustSurfaceDistance);
 }
 
 // ---------------- fogbox: box density ----------------
@@ -470,8 +420,7 @@ float4 dustfog(float2 tex : TEXCOORD0, float2 vpos : VPOS) : COLOR0 {
         // Per-particle opacity variation: unique deterministic factor
         // from this particle's world position, so neighboring motes
         // don't all render at identical strength.
-        float opacitySeed = frac(sin(dot(p, float3(12.9898, 78.233, 37.719))) * 43758.5453);
-        float opacityMult = lerp(1.0 - dustOpacityVariation, 1.0, opacitySeed);
+        float opacityMult = 1.0; // Stable opacity while diagnosing/fixing surface flicker.
 
         // Static height falloff: thins dust with height above the floor,
         // same reference (fogCenter.z) as the fog volume - concentrates
