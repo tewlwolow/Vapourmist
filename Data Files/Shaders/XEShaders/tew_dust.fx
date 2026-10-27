@@ -30,10 +30,10 @@ float fov;
 // Density:
 // 0   = no particles
 // 20  = maximum particles
-float dustDensity = 4.2;
+float dustDensity = 4.0;
 
 // Particle size multiplier
-float dustSize = 2.5;
+float dustSize = 3.0;
 
 // Distance between particle cells
 float dustCellSize = 43.0;
@@ -61,13 +61,13 @@ float dustFadeEnd = 80.0;
 // Material threshold
 // Lower = more particles visible
 // Higher = only brighter particles
-float dustMaterialBias = 0.2;
+float dustMaterialBias = 0.35;
 
 // Dust visibility / brightness
 // 0   = invisible
 // 1   = old strength
 // 0.15-0.35 = natural cave dust
-float dustOpacity = 0.16;
+float dustOpacity = 0.17;
 
 // Neutral fallback color used when no fog volume is nearby (avoids dust
 // tinting toward black - see dustTint fallback in the main pass).
@@ -76,12 +76,12 @@ float3 dustBaseColor = float3(0.85, 0.82, 0.75);
 // How much the particle shape exponent (dustShape) varies per-particle.
 // 0 = every particle uses exactly dustShape. Higher = more mix of
 // diamond/sphere/cube-ish silhouettes for a less uniform look.
-float dustShapeVariation = 0.4;
+float dustShapeVariation = 0.35;
 
 // How much particle opacity varies per-particle, as a fraction of
 // dustOpacity. 0 = every particle equally opaque. 1 = some particles
 // can fade almost to nothing while others hit full dustOpacity.
-float dustOpacityVariation = 0.8;
+float dustOpacityVariation = 0.3;
 
 // Static height falloff: dust thins out with height above the floor,
 // scaled against the fog volume's own vertical extent (fogRadius.z)
