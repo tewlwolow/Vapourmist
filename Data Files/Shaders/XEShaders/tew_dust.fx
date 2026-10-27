@@ -86,6 +86,36 @@ float dustShapeVariation = 0.7;
 // can fade almost to nothing while others hit full dustOpacity.
 float dustOpacityVariation = 0.7;
 
+// Anisotropic stretch: gives each particle a slightly irregular,
+// elongated/flattened silhouette per-axis instead of every particle
+// being a perfectly symmetric blob - real dust flecks aren't uniform.
+// 0 = no stretch (perfectly symmetric, old behavior), higher = more
+// pronounced per-particle elongation/flattening.
+float dustStretchAmount = 0.2;
+
+// Static height falloff: dust thins out with height above the floor,
+// scaled against the fog volume's own vertical extent (fogRadius.z)
+// rather than a fixed world-unit rate - a fixed rate would be wildly
+// too strong or too weak depending on how tall a given interior's fog
+// volume actually is, since room sizes vary a lot.
+// dustHeightFalloffRange: falloff completes over this many multiples of
+// fogRadius.z above the floor. Smaller = falloff happens closer to the
+// ground, larger = dust stays visible higher up.
+// dustHeightFalloffStrength: how much dust is reduced at the top of
+// that range. 1.0 = fully gone, 0.5 = only halved. Capped below 1 by
+// default so dust never fully vanishes, just thins.
+float dustHeightFalloffRange = 1.5;
+float dustHeightFalloffStrength = 0.65;
+
+// Makes particles genuinely bigger (real SDF geometry, not just less
+// transparent) near the floor, so dust reads as visibly pooled/settled
+// there even when looking straight down - a short vertical raymarch has
+// far fewer chances to hit a particle than a long horizontal one, so
+// opacity alone can't fix that; the particles themselves need to be
+// larger/denser near the ground to be reliably hit at all.
+// 0 = no boost, higher = more dramatic pooling near the floor.
+float dustPoolingBoost = 1.5;
+
 // -- fogbox params --
 // Single fog volume, matching tew_fogbox.fx - interior.lua only ever
 // registers one fog ID against this shader, so no array/indexing needed.
@@ -94,47 +124,50 @@ float3 fogRadius;
 float3 fogColor;
 float fogDensity;
 
-// Ground-hugging mist: thins fog toward the top of its volume so it
-// pools near the floor like real cave mist, rather than sitting as a
-// uniform density block top to bottom.
-// 0 = uniform density (old behavior), 1 = fully thins out at the top.
-float fogHeightFalloff = 0.8;
-
-// Cheap 3D value noise breaks up the smooth analytic box gradient into
-// wispy/patchy variation, sampled once per pixel at the actual visible
-// surface position (reconstructed from the depth buffer), and slowly
-// scrolled over time so the patchiness itself drifts like real fog would.
 // Overall multiplier on final fog density - an easy dial to make fog
 // lighter/heavier without needing to touch the fogDensity data itself.
 float fogDensityScale = 0.60;
-
-// 0 = perfectly smooth (old behavior), higher = patchier/wispier.
-// Biased toward thinning rather than symmetric thicken/thin - real fog
-// reads as mostly-thin with occasional denser wisps, not oscillating
-// evenly above and below a baseline.
-float fogNoiseStrength = 0.55;
-float fogNoiseScale = 0.018;   // world-space frequency - lower = larger wisps
-
-// Organic swirling drift for the fog's internal noise pattern - built
-// from several independent sine terms at different speeds/phases so it
-// changes direction over time instead of scrolling in one straight line.
-// Depends only on `time`, never on eyepos/camera position, so it can't
-// read as tied to player movement.
-float fogFlowStrength = 800.0;  // world-unit-equivalent amplitude of the swirl
-float fogFlowSpeed = 0.06;     // how fast the swirl evolves
 
 // ---------------- constants ----------------
 
 static const float2 invproj = 2.0 * tan(0.5 * radians(fov)) * float2(1.0, rcpres.x / rcpres.y);
 static const float3 spherePosBase = float3(-24900.0, -13000.0, 0.0);
 
-// Ordered dithering matrix
-static const float DITHERING[4][4] = {
-    0.001176, 0.001961, -0.001176, -0.001699,
-    -0.000654, -0.000915, 0.000392, 0.000131,
-    -0.000131, -0.001961, 0.000654, 0.000915,
-    0.001699, 0.001438, -0.000392, -0.001438
-};
+// Static 3-layer stack, derived from the single fogCenter/fogRadius/
+// fogDensity - each layer is a fixed offset/scale of the same base
+// volume, giving a low dense layer, a mid layer, and a thin wispy top
+// layer instead of one uniform block. No raymarch, no per-frame
+// breathing - purely static geometry, animated only via the drift
+// noise below.
+static const float LAYER_CENTER_Z_FRAC[3] = { -0.6, 0.2, 1.1 };  // fraction of radius.z
+static const float LAYER_RADIUS_Z_SCALE[3] = { 0.6, 1.0, 1.8 };
+
+// Exponential height falloff: fog thins out the higher above the base
+// fogCenter.z it sits, like real ground fog. Bigger = thinner fog,
+// faster falloff with height. Bottom layer (LAYER_CENTER_Z_FRAC[0] is
+// negative, i.e. below fogCenter.z) is never affected - only the mid/
+// high layers thin out, giving the fog a settled, ground-hugging look.
+// At typical interior fogRadius.z, this rate puts the mid layer at
+// roughly 70% and the top layer at roughly 15% of base density.
+static const float HEIGHT_FALLOFF_RATE = 0.0044;
+
+// Slow noise-driven drift. Scrolls linearly with time (not sin/cos), so
+// it doesn't produce a uniform screen-wide pulsing - it's spatial noise
+// sliding past, not a global oscillation.
+static const float NOISE_SCALE = 0.00035;
+static const float2 DRIFT_SPEED = float2(40.0, 22.0); // world units/sec
+static const float DRIFT_MIN = 0.8;
+static const float DRIFT_MAX = 1.2;
+
+// Interleaved gradient noise - per-pixel pseudo-random dither that never
+// tiles visibly (unlike a small ordered/Bayer matrix, which becomes its
+// own visible pattern over large flat regions). Same cost as the old
+// matrix lookup, no extra texture needed.
+// http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare
+float interleavedGradientNoise(float2 vpos) {
+    float3 magic = float3(0.06711056, 0.00583715, 52.9829189);
+    return frac(magic.z * frac(dot(vpos, magic.xy)));
+}
 
 // ---------------- textures ----------------
 
@@ -163,38 +196,24 @@ float3 toWorld(float2 tex) {
     return v;
 }
 
-// Cheap value noise for fog patchiness - trilinear interpolation over
-// 8 hashed cell corners. Only evaluated 3x per pixel (once per fog
-// volume), not per raymarch step, so this stays affordable.
-float hashFog(float3 p) {
-    p = frac(p * 0.3183099 + 0.1);
-    p *= 17.0;
-    return frac(p.x * p.y * p.z * (p.x + p.y + p.z));
+// Cheap 2D drift noise for fog patchiness - sampled once per layer at
+// the point the ray enters the box, not per raymarch step, so this
+// stays cheap regardless of box size.
+float hash21(float2 p) {
+    p = frac(p * float2(123.34, 456.21));
+    p += dot(p, p + 45.32);
+    return frac(p.x * p.y);
 }
 
-float noiseFog(float3 p) {
-    float3 i = floor(p);
-    float3 f = frac(p);
-    f = f * f * (3.0 - 2.0 * f);
-
-    float n000 = hashFog(i + float3(0,0,0));
-    float n100 = hashFog(i + float3(1,0,0));
-    float n010 = hashFog(i + float3(0,1,0));
-    float n110 = hashFog(i + float3(1,1,0));
-    float n001 = hashFog(i + float3(0,0,1));
-    float n101 = hashFog(i + float3(1,0,1));
-    float n011 = hashFog(i + float3(0,1,1));
-    float n111 = hashFog(i + float3(1,1,1));
-
-    float nx00 = lerp(n000, n100, f.x);
-    float nx10 = lerp(n010, n110, f.x);
-    float nx01 = lerp(n001, n101, f.x);
-    float nx11 = lerp(n011, n111, f.x);
-
-    float nxy0 = lerp(nx00, nx10, f.y);
-    float nxy1 = lerp(nx01, nx11, f.y);
-
-    return lerp(nxy0, nxy1, f.z);
+float noise2D(float2 p) {
+    float2 i = floor(p);
+    float2 f = frac(p);
+    float a = hash21(i);
+    float b = hash21(i + float2(1, 0));
+    float c = hash21(i + float2(0, 1));
+    float d = hash21(i + float2(1, 1));
+    float2 u = f * f * (3.0 - 2.0 * f);
+    return lerp(lerp(a, b, u.x), lerp(c, d, u.x), u.y);
 }
 
 // ---------------- dust: distance field ----------------
@@ -250,6 +269,15 @@ float GetDistOnly(float3 p)
     q = frac(q * invCell) * dustCellSize
         - dustCellSize * 0.5;
 
+    // Anisotropic stretch: gives each particle a slightly irregular,
+    // elongated/flattened silhouette per-axis rather than every particle
+    // being a perfectly symmetric blob - real dust flecks aren't uniform.
+    float3 stretch = 1.0 + dustStretchAmount * (float3(
+        frac(r1 * 11.13),
+        frac(r1 * 17.77),
+        frac(r1 * 23.31)
+    ) - 0.5);
+    q *= stretch;
 
     float radius =
         (0.1 + 0.4 * frac(r1 * 43.123))
@@ -261,6 +289,17 @@ float GetDistOnly(float3 p)
     // as a genuine density gradient instead of patches popping in/out.
     float densityScale = saturate(dustDensity / 20.0);
     radius *= densityScale;
+
+    // Pooling boost: grows particles near the floor (real geometry, not
+    // just opacity), so dust is reliably hit by the raymarch even when
+    // looking straight down through a short vertical path, instead of
+    // only being visible when looking sideways across a long one.
+    float worldZ = p.z + eyepos.z;
+    float heightAboveFloor = max(0.0, worldZ - fogCenter.z);
+    float heightRange = max(1.0, fogRadius.z * dustHeightFalloffRange);
+    float heightNorm = saturate(heightAboveFloor / heightRange);
+    float poolBoost = lerp(1.0 + dustPoolingBoost, 1.0, smoothstep(0.0, 1.0, heightNorm));
+    radius *= poolBoost;
 
     // Per-particle shape variation: jitter the superellipsoid exponent
     // around dustShape so particles aren't all identical silhouettes.
@@ -313,12 +352,12 @@ float GetMaterial(float3 p)
         );
 }
 
-float RayMarch(float3 ro,float3 rd)
+float RayMarch(float3 ro,float3 rd,float maxRange)
 {
     float dO=0;
 
     [loop]
-    for(int i=0;i<200;i++)
+    for(int i=0;i<128;i++)
     {
         float3 p=ro+dO*rd;
 
@@ -327,7 +366,7 @@ float RayMarch(float3 ro,float3 rd)
         dO+=dS;
 
         if(dS<dustSurfaceDistance ||
-           dO>dustMaxDistance)
+           dO>maxRange)
             break;
     }
 
@@ -336,10 +375,10 @@ float RayMarch(float3 ro,float3 rd)
 
 // ---------------- fogbox: box density ----------------
 
-// https://www.shadertoy.com/view/Ml3GR8 (ray-box intersection only - the
-// original closed-form density integral below was replaced with a short
-// raymarch, see comment further down for why)
-float boxDensity(float3 wpos, float3 wdir, float3 p, float3 r, float dbuffer) {
+// https://www.shadertoy.com/view/Ml3GR8
+float boxDensity(float3 wpos, float3 wdir, float3 p, float3 r, float dbuffer, out float tNear) {
+    tNear = 0.0;
+
     float3 d = wdir;
     float3 o = wpos - p;
 
@@ -355,6 +394,7 @@ float boxDensity(float3 wpos, float3 wdir, float3 p, float3 r, float dbuffer) {
     if (tF < 0.0 || tN > dbuffer) return 0.0;
 
     tN = max(tN, 0.0);
+    tNear = tN; // distance to where the ray enters the box - used to sample world position for the drift noise
 
     float wl = waterlevel - 5;
     float3 waterProbe = wpos + wdir * tF;
@@ -363,64 +403,31 @@ float boxDensity(float3 wpos, float3 wdir, float3 p, float3 r, float dbuffer) {
 
     tF = min(tF, dbuffer);
 
-    if (tF <= tN) return 0.0;
+    o += tN*d; tF = tF-tN; tN = 0.0;
 
-    // Short raymarch through the box interval instead of the old smooth
-    // closed-form integral: that approach could only ever multiply a
-    // single flat noise value onto the whole ray's aggregate density,
-    // which can't actually break up a shape that's still a hard analytic
-    // box underneath - it just flickered the box's overall opacity.
-    // Sampling noise (and an edge falloff) at several actual positions
-    // along the ray gives real per-position variation, and rounding the
-    // box's corners via distance-from-center falloff keeps it from
-    // reading as a rigid rectangle.
-    static const int FOG_SAMPLES = 6;
-    float stepSize = (tF - tN) / FOG_SAMPLES;
+    float3 a = 1.0-(o*o)/(r*r);
+    float3 b = -2.0*(o*d)/(r*r);
+    float3 c = -(d*d)/(r*r);
 
-    // Swirling flow offset - purely a function of time, so it's identical
-    // regardless of where the camera is standing or looking. Several
-    // sine terms at different speeds/phases per axis avoid a straight-
-    // line drift, giving an organic, direction-changing "swerve" instead.
-    float ft = time * fogFlowSpeed;
-    float3 flowOffset = float3(
-        sin(ft * 1.0 + 1.3) * 0.7 + cos(ft * 0.63 + 4.1) * 0.5,
-        cos(ft * 0.81 + 2.7) * 0.7 + sin(ft * 0.45 + 0.6) * 0.5,
-        sin(ft * 0.54 + 3.9) * 0.4
-    ) * fogFlowStrength;
+    float t1 = tF;
+    float t2 = t1*t1;
+    float t3 = t2*t1;
+    float t4 = t2*t2;
+    float t5 = t2*t3;
+    float t6 = t3*t3;
+    float t7 = t3*t4;
 
-    float accum = 0.0;
-    [unroll]
-    for (int s = 0; s < FOG_SAMPLES; s++) {
-        float t = tN + stepSize * (s + 0.5);
-        float3 samplePos = wpos + wdir * t;
+    float f = (t1/1.0) * (a.x*a.y*a.z)
+            + (t2/2.0) * (a.x*a.y*b.z + a.x*b.y*a.z + b.x*a.y*a.z)
+            + (t3/3.0) * (a.x*a.y*c.z + a.x*b.y*b.z + a.x*c.y*a.z + b.x*a.y*b.z + b.x*b.y*a.z + c.x*a.y*a.z)
+            + (t4/4.0) * (a.x*b.y*c.z + a.x*c.y*b.z + b.x*a.y*c.z + b.x*b.y*b.z + b.x*c.y*a.z + c.x*a.y*b.z + c.x*b.y*a.z)
+            + (t5/5.0) * (a.x*c.y*c.z + b.x*b.y*c.z + b.x*c.y*b.z + c.x*a.y*c.z + c.x*b.y*b.z + c.x*c.y*a.z)
+            + (t6/6.0) * (b.x*c.y*c.z + c.x*b.y*c.z + c.x*c.y*b.z)
+            + (t7/7.0) * (c.x*c.y*c.z);
 
-        // Position relative to box center - small, stable magnitude
-        // (unlike raw wpos/samplePos, which can be tens of thousands of
-        // world units and suffer float precision loss when hashed, which
-        // reads as noise "swimming" with camera movement).
-        float3 localSamplePos = samplePos - p;
-
-        // Position within the box in -1..1 local space, used to round the
-        // silhouette off into more of a soft blob than a hard rectangle.
-        float3 localPos = localSamplePos / r;
-        float edgeFalloff = saturate(1.0 - dot(localPos, localPos));
-
-        float noiseVal = noiseFog((localSamplePos + flowOffset) * fogNoiseScale);
-        // Biased toward thinning (never exceeds baseline) rather than
-        // symmetric thicken/thin - reads as patchy wisps, not pulsing.
-        float localDensity = lerp(1.0 - fogNoiseStrength, 1.0, noiseVal) * edgeFalloff;
-
-        // Ground-hugging mist: thin toward the top of the volume.
-        float heightNorm = saturate((samplePos.z - (p.z - r.z)) / max(0.01, r.z * 2.0));
-        localDensity *= lerp(1.0, 1.0 - fogHeightFalloff, heightNorm);
-
-        accum += localDensity * stepSize;
-    }
-
-    accum *= fogDensityScale;
-
-    return accum;
+    return f * fogDensityScale;
 }
+
 
 // ---------------- combined pass ----------------
 
@@ -442,7 +449,15 @@ float4 dustfog(float2 tex : TEXCOORD0, float2 vpos : VPOS) : COLOR0 {
     float3 ro = float3(0.0, 0.0, 0.0);
     float3 rd = normalize(v);
 
-    float d = RayMarch(ro, rd);
+    // Capping the march at dm (the actual visible surface depth) rather
+    // than always marching to dustMaxDistance is a free win, not a
+    // visual tradeoff: the check below already discards any result with
+    // d >= dm (dust behind the wall/floor isn't drawn), so continuing to
+    // march past that point was always wasted work - this just stops
+    // sooner instead of computing a result that gets thrown away.
+    // Especially significant for interiors, where dm (room depth) is
+    // usually far smaller than dustMaxDistance (1200).
+    float d = RayMarch(ro, rd, min(dustMaxDistance, dm));
     float3 p = ro + rd * d;
 
     float3 col;
@@ -458,6 +473,17 @@ float4 dustfog(float2 tex : TEXCOORD0, float2 vpos : VPOS) : COLOR0 {
         float opacitySeed = frac(sin(dot(p, float3(12.9898, 78.233, 37.719))) * 43758.5453);
         float opacityMult = lerp(1.0 - dustOpacityVariation, 1.0, opacitySeed);
 
+        // Static height falloff: thins dust with height above the floor,
+        // same reference (fogCenter.z) as the fog volume - concentrates
+        // dust near the ground like it's settled there, no animation.
+        // Normalized against fogRadius.z so it auto-scales with however
+        // tall this interior's fog volume actually is.
+        float worldZ = p.z + eyepos.z;
+        float heightAboveFloor = max(0.0, worldZ - fogCenter.z);
+        float heightRange = max(1.0, fogRadius.z * dustHeightFalloffRange);
+        float heightNorm = saturate(heightAboveFloor / heightRange);
+        float heightFalloff = lerp(1.0, 1.0 - dustHeightFalloffStrength, smoothstep(0.0, 1.0, heightNorm));
+
         float dustAmount =
             smoothstep(dustFadeStart,dustFadeEnd,d)
             *
@@ -465,7 +491,9 @@ float4 dustfog(float2 tex : TEXCOORD0, float2 vpos : VPOS) : COLOR0 {
             *
             dustOpacity
             *
-            opacityMult;
+            opacityMult
+            *
+            heightFalloff;
 
         float3 sceneLinear = pow(scenecol.rgb,2.2);
 
@@ -491,15 +519,37 @@ float4 dustfog(float2 tex : TEXCOORD0, float2 vpos : VPOS) : COLOR0 {
     // gamma -> linear
     color = pow(color, 2.2);
 
-    // Single fog volume - interior.lua only ever registers one (FOG_ID
-    // "tew_interior").
+    // Draw the fog as 3 stacked static layers (low/dense, mid, high/wispy)
+    // built from the single lua-supplied fogCenter/fogRadius/fogDensity -
+    // interior.lua only ever registers one fog volume (FOG_ID "tew_interior").
     if (fogDensity > 0.0) {
-        float density = boxDensity(pos, dir, fogCenter, fogRadius, depth);
-        if (density > 0.0) {
-            float fogScalar = 1.0 / sqrt(dot(fogRadius, fogRadius));
-            density = density * fogScalar * fogDensity;
+        [unroll]
+        for (int i = 0; i < 3; i++) {
+            float3 center = fogCenter;
+            center.z += LAYER_CENTER_Z_FRAC[i] * fogRadius.z;
 
-            color = lerp(fogColor * fogColor, color, exp(-0.5 * density));
+            float3 radius = fogRadius;
+            radius.z *= LAYER_RADIUS_Z_SCALE[i];
+
+            float tNear;
+            float density = boxDensity(pos, dir, center, radius, depth, tNear);
+            if (density > 0.0) {
+                float fogScalar = 1.0 / sqrt(dot(radius, radius));
+                density = density * fogScalar * fogDensity;
+
+                // exponential height falloff above the base fogCenter.z
+                float heightAboveBase = max(0.0, center.z - fogCenter.z);
+                density *= exp(-heightAboveBase * HEIGHT_FALLOFF_RATE);
+
+                // slow drifting noise, sampled at the world XY where the
+                // ray enters this layer, scrolled linearly by time
+                float3 entryPos = pos + dir * tNear;
+                float2 driftUV = (entryPos.xy + time * DRIFT_SPEED) * NOISE_SCALE;
+                float n = noise2D(driftUV);
+                density *= lerp(DRIFT_MIN, DRIFT_MAX, n);
+
+                color = lerp(fogColor * fogColor, color, exp(-0.5 * density));
+            }
         }
     }
 
@@ -507,7 +557,7 @@ float4 dustfog(float2 tex : TEXCOORD0, float2 vpos : VPOS) : COLOR0 {
     color = pow(color, 1.0/2.2);
 
     // dithering
-    float dithering = DITHERING[vpos.x % 4][vpos.y % 4];
+    float dithering = (interleavedGradientNoise(vpos) - 0.5) / 128.0;
     color += dithering;
 
     return float4(color, 1.0);
