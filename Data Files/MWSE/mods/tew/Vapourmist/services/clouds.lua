@@ -5,10 +5,8 @@
 local clouds = {}
 
 -- Imports
-
 ---@module 'tew.Vapourmist.components.util'
 local util = require("tew.Vapourmist.components.util")
----@fun
 local debugLog = util.debugLog
 
 ---@module 'tew.Vapourmist.config'
@@ -20,35 +18,45 @@ local conditionTimer, delayTimer, appCullTimer
 -- Constants
 
 local TIMER_DURATION = 0.25
-
 local CELL_SIZE = 8192
 
-local MIN_LIFESPAN = 18
+local MIN_LIFESPAN = 12
 local MAX_LIFESPAN = 28
 
-local DEPTHS = { 600, 800, 1200, 1500, 1800, 2000, 2500, 3000, 3500, 4000 }
-
-local MIN_BIRTHRATE = 0.8
-local MAX_BIRTHRATE = 1.6
+local MIN_BIRTHRATE = 0.5
+local MAX_BIRTHRATE = 1.5
 
 local MIN_SPEED = 15
-
--- local WHITE = niColor.new(1, 1, 1)
-
 local CUTOFF_COEFF = 4
 
 local HEIGHTS = { 5600, 5900, 6300, 6200, 6800, 7100, 7500, 7900, 8200, 8500, 9200, 9800 }
 
-local EMITTER_HEIGHT_COEFFS = {
-	["small"] = 0.5,
-	["medium"] = 0.9,
-	["big"] = 1.3,
+local CLOUD_BASE_HEIGHT_OFFSET = 2000
+
+-- Three emitter profiles: shallow, middle, deep.
+-- Height is a multiplier of the overall particle-system size.
+-- Depth is the emitter's depth in game units.
+local EMITTER_PROFILES = {
+	shallow = {
+		height = 2.0,
+		depth = 1500,
+	},
+	middle = {
+		height = 4.0,
+		depth = 2750,
+	},
+	deep = {
+		height = 7.0,
+		depth = 4000,
+	},
 }
 
-local SIZES = {
-	["small"] = { 546, 600, 760, 850, 923, 1200, 1350, 1500 },
-	["medium"] = { 1600, 1740, 1917, 2000, 2250, 2800, 3000 },
-	["big"] = { 3000, 3200, 3400, 3700, 4000, 4200, 4500 },
+-- Assign the four particle systems to the three profiles.
+local PARTICLE_SYSTEM_PROFILES = {
+	tew_Clouds_ParticleSystem_1 = "shallow",
+	tew_Clouds_ParticleSystem_2 = "middle",
+	tew_Clouds_ParticleSystem_3 = "deep",
+	tew_Clouds_ParticleSystem_4 = "middle",
 }
 
 ---@type niNode
@@ -56,12 +64,13 @@ local MESH = tes3.loadMesh("tew\\Vapourmist\\vapourcloud.nif")
 
 local NAME_MAIN = "tew_Clouds"
 local NAME_EMITTER = "tew_Clouds_Emitter"
+
 local NAME_PARTICLE_SYSTEMS = {
 	"tew_Clouds_ParticleSystem_1",
 	"tew_Clouds_ParticleSystem_2",
 	"tew_Clouds_ParticleSystem_3",
+	"tew_Clouds_ParticleSystem_4",
 }
-
 
 -->>>---------------------------------------------------------------------------------------------<<<--
 -- Structures
@@ -72,7 +81,6 @@ local WtC = tes3.worldController.weatherController
 
 -->>>---------------------------------------------------------------------------------------------<<<--
 -- Functions
-
 
 -- Helper logic
 
@@ -87,11 +95,11 @@ local function getCloudPosition(cell)
 
 	local height = HEIGHTS[math.random(#HEIGHTS)]
 
-	if average == 0 or denom == 0 then
+	if denom == 0 then
 		return height
-	else
-		return (average / denom) + height
 	end
+
+	return (average / denom) + height
 end
 
 local function isAvailable(weather)
@@ -99,6 +107,7 @@ local function isAvailable(weather)
 	if not cell then return end
 
 	local weatherName = weather.name
+
 	return not config.blockedCloud[weatherName]
 		and config.cloudyWeathers[weatherName]
 		and cell.isOrBehavesAsExterior
@@ -114,22 +123,23 @@ end
 
 local function isPlayerClouded()
 	debugLog("Checking if player is clouded.")
-	local cloudMesh
+
 	local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
+
 	for _, node in pairs(vfxRoot.children) do
 		if node and node.name == NAME_MAIN then
 			local emitter = node:getObjectByName(NAME_EMITTER)
-			if not emitter.appCulled then
-				cloudMesh = node
-				local mp = tes3.mobilePlayer
-				local playerPos = mp.position:copy()
+
+			if emitter and not emitter.appCulled then
+				local playerPos = tes3.mobilePlayer.position:copy()
 				local drawDistance = mge.distantLandRenderConfig.drawDistance
-				return playerPos:distance(cloudMesh.translation:copy()) < (getCutoffDistance(drawDistance))
+
+				return playerPos:distance(node.translation:copy())
+					< getCutoffDistance(drawDistance)
 			end
 		end
 	end
 end
-
 
 -- Hide/show logic
 
@@ -142,27 +152,34 @@ end
 function clouds.detachAll()
 	local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
 	if not vfxRoot then return end
+
 	debugLog("Detaching all clouds...")
+
 	for _, node in pairs(vfxRoot.children) do
 		if node and node.name == NAME_MAIN then
 			detach(node)
 		end
 	end
+
 	debugLog("All clouds detached.")
 end
 
 local function detachAppCulled(state)
 	local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
 	if not vfxRoot then return end
+
 	debugLog("Detaching clouds with appCulled state: " .. tostring(state))
+
 	for _, node in pairs(vfxRoot.children) do
 		if node and node.name == NAME_MAIN then
 			local emitter = node:getObjectByName(NAME_EMITTER)
-			if emitter.appCulled == state then
+
+			if emitter and emitter.appCulled == state then
 				detach(node)
 			end
 		end
 	end
+
 	debugLog("Clouds with appCulled state: " .. tostring(state) .. " detached.")
 end
 
@@ -170,7 +187,8 @@ end
 ---@param bool boolean
 local function switchAppCull(node, bool)
 	local emitter = node:getObjectByName(NAME_EMITTER)
-	if (emitter.appCulled ~= bool) then
+
+	if emitter and emitter.appCulled ~= bool then
 		emitter.appCulled = bool
 		emitter:update()
 	end
@@ -178,15 +196,21 @@ end
 
 local function appCull(node)
 	local emitter = node:getObjectByName(NAME_EMITTER)
-	if not (emitter.appCulled) then
+	if not emitter then return end
+
+	if not emitter.appCulled then
 		switchAppCull(node, true)
+
 		appCullTimer = timer.start {
 			type = timer.simulate,
 			duration = MAX_LIFESPAN,
 			iterations = 1,
 			persistent = false,
-			callback = function() detachAppCulled(true) end,
+			callback = function()
+				detachAppCulled(true)
+			end,
 		}
+
 		debugLog("Clouds appculled.")
 	else
 		debugLog("Clouds already appculled. Skipping.")
@@ -195,7 +219,10 @@ end
 
 local function appCullAll()
 	debugLog("Appculling all clouds.")
+
 	local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
+	if not vfxRoot then return end
+
 	for _, node in pairs(vfxRoot.children) do
 		if node and node.name == NAME_MAIN then
 			appCull(node)
@@ -205,14 +232,15 @@ end
 
 -- Colour logic
 
--- Calculate output colours from current fog colour --
 local function getOutputValues()
 	local currentFogColor = WtC.currentFogColor:copy()
+
 	local weatherColour = {
 		r = currentFogColor.r,
 		g = currentFogColor.g,
 		b = currentFogColor.b,
 	}
+
 	return {
 		colours = weatherColour,
 		angle = WtC.windVelocityCurrWeather:normalized():copy().y * math.pi * 0.5,
@@ -222,36 +250,44 @@ end
 
 local function reColourAll(cloudColour, speed, angle)
 	local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
+	if not vfxRoot then return end
+
 	for _, node in pairs(vfxRoot.children) do
 		if node and node.name == NAME_MAIN then
 			for _, name in ipairs(NAME_PARTICLE_SYSTEMS) do
 				local particleSystem = node:getObjectByName(name)
 
-				local controller = particleSystem.controller
-				local colorModifier = controller.particleModifiers
+				if particleSystem and particleSystem.controller then
+					local controller = particleSystem.controller
+					local colorModifier = controller.particleModifiers
 
-				controller.speed = speed
-				controller.planarAngle = angle
+					controller.speed = speed
+					controller.planarAngle = angle
 
-				for _, key in pairs(colorModifier.colorData.keys) do
-					key.color.r = cloudColour.r
-					key.color.g = cloudColour.g
-					key.color.b = cloudColour.b
+					if colorModifier and colorModifier.colorData then
+						for _, key in pairs(colorModifier.colorData.keys) do
+							key.color.r = cloudColour.r
+							key.color.g = cloudColour.g
+							key.color.b = cloudColour.b
+						end
+					end
+
+					local materialProperty = particleSystem.materialProperty
+
+					if materialProperty then
+						materialProperty.emissive = cloudColour
+						materialProperty.specular = cloudColour
+						materialProperty.diffuse = cloudColour
+						materialProperty.ambient = cloudColour
+					end
+
+					particleSystem:update()
+					particleSystem:updateProperties()
+					particleSystem:updateEffects()
+					node:update()
+					node:updateProperties()
+					node:updateEffects()
 				end
-
-				local materialProperty = particleSystem.materialProperty
-
-				materialProperty.emissive = cloudColour
-				materialProperty.specular = cloudColour
-				materialProperty.diffuse = cloudColour
-				materialProperty.ambient = cloudColour
-
-				particleSystem:update()
-				particleSystem:updateProperties()
-				particleSystem:updateEffects()
-				node:update()
-				node:updateProperties()
-				node:updateEffects()
 			end
 		end
 	end
@@ -259,58 +295,66 @@ end
 
 local function reColour()
 	local output = getOutputValues()
-	local cloudColour = output.colours
-	local speed = output.speed
-	local angle = output.angle
-
-	reColourAll(cloudColour, speed, angle)
+	reColourAll(output.colours, output.speed, output.angle)
 end
 
 -- NIF values logic
-local function deployEmitter(particleSystem, size)
-	local drawDistance = mge.distantLandRenderConfig.drawDistance
 
+local function deployEmitter(particleSystem, name, drawDistance)
 	local controller = particleSystem.controller
+	if not controller then
+		debugLog("No controller found for particle system: " .. name)
+		return
+	end
 
-	local birthRate = math.random(MIN_BIRTHRATE, MAX_BIRTHRATE) * drawDistance
-	controller.birthRate = birthRate
+	local profileName = PARTICLE_SYSTEM_PROFILES[name]
+	local profile = EMITTER_PROFILES[profileName]
+
+	if not profile then
+		debugLog("No emitter profile found for particle system: " .. name)
+		return
+	end
+
+	controller.birthRate = math.random(MIN_BIRTHRATE, MAX_BIRTHRATE) * drawDistance
 	controller.useBirthRate = true
 
 	local lifespan = math.random(MIN_LIFESPAN, MAX_LIFESPAN)
 	controller.lifespan = lifespan
 	controller.emitStopTime = lifespan * lifespan
 
-	local effectSize = getParticleSystemSize(drawDistance) * EMITTER_HEIGHT_COEFFS[size]
-	debugLog("Effect size: " .. effectSize)
+	local effectSize = getParticleSystemSize(drawDistance)
 
 	controller.emitterWidth = effectSize
-	controller.emitterHeight = effectSize
-	local depth = DEPTHS[math.random(#DEPTHS)] * EMITTER_HEIGHT_COEFFS[size]
-	controller.emitterDepth = depth
-	debugLog("Emitter depth: " .. depth)
+	controller.emitterHeight = effectSize * profile.height
+	controller.emitterDepth = profile.depth
 
-	local initialSize = SIZES[size][math.random(#SIZES[size])]
-	controller.initialSize = initialSize
+	debugLog("Emitter: " .. name)
+	debugLog("Profile: " .. profileName)
+	debugLog("Emitter width: " .. controller.emitterWidth)
+	debugLog("Emitter height: " .. controller.emitterHeight)
+	debugLog("Emitter depth: " .. controller.emitterDepth)
 
 	particleSystem:update()
 	particleSystem:updateProperties()
 	particleSystem:updateEffects()
-	debugLog("Emitter deployed.")
 end
 
 local function addClouds()
 	debugLog("Adding clouds.")
+
 	local cell = tes3.getPlayerCell()
+	if not cell then return end
 
 	local mp = tes3.mobilePlayer
 	if not mp or not mp.position then return end
 
 	local playerPos = mp.position:copy()
+	local drawDistance = mge.distantLandRenderConfig.drawDistance
 
 	local cloudPosition = tes3vector3.new(
 		playerPos.x,
 		playerPos.y,
-		getCloudPosition(cell)
+		getCloudPosition(cell) + CLOUD_BASE_HEIGHT_OFFSET
 	)
 
 	---@type niNode
@@ -319,26 +363,15 @@ local function addClouds()
 	cloudMesh:clearTransforms()
 	cloudMesh.translation = cloudPosition
 
-	local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
-	vfxRoot:attachChild(cloudMesh)
-
-	local cloudNode
-	for _, node in pairs(vfxRoot.children) do
-		if node and node.name == NAME_MAIN then
-			cloudNode = node
-		end
-	end
-	if not cloudNode then return end
-
-	local sizes = { "small", "medium", "big" }
+	local cloudNode = cloudMesh:getObjectByName(NAME_MAIN) or cloudMesh
 
 	for _, name in ipairs(NAME_PARTICLE_SYSTEMS) do
 		local particleSystem = cloudNode:getObjectByName(name)
+
 		if particleSystem then
-			local ind = math.random(1, #sizes)
-			local size = sizes[ind]
-			deployEmitter(particleSystem, size)
-			table.remove(sizes, ind)
+			deployEmitter(particleSystem, name, drawDistance)
+		else
+			debugLog("Particle system not found: " .. name)
 		end
 	end
 
@@ -346,6 +379,12 @@ local function addClouds()
 	cloudMesh:update()
 	cloudMesh:updateProperties()
 	cloudMesh:updateEffects()
+
+	local vfxRoot = tes3.worldController.vfxManager.worldVFXRoot
+	if not vfxRoot then return end
+
+	vfxRoot:attachChild(cloudMesh)
+
 	debugLog("Clouds added.")
 end
 
@@ -353,19 +392,24 @@ end
 
 local function waitingCheck()
 	debugLog("Starting waiting check.")
+
 	local mp = tes3.mobilePlayer
+
 	if (not mp) or (mp and (mp.waiting or mp.sleeping or mp.traveling)) then
 		toWeather = WtC.nextWeather or WtC.currentWeather
-		if not (isAvailable(toWeather)) then
+
+		if not isAvailable(toWeather) then
 			debugLog("Player waiting or travelling and clouds not available.")
 			clouds.detachAll()
 		end
 	end
+
 	clouds.conditionCheck()
 end
 
 function clouds.onWaitMenu(e)
 	local element = e.element
+
 	element:registerAfter(tes3.uiEvent.destroy, function()
 		waitingCheck()
 	end)
@@ -373,6 +417,7 @@ end
 
 function clouds.onWeatherChanged()
 	debugLog("Starting weather check.")
+
 	toWeather = WtC.nextWeather or WtC.currentWeather
 
 	if not isAvailable(toWeather) then
@@ -382,6 +427,7 @@ function clouds.onWeatherChanged()
 
 	if WtC.nextWeather and WtC.transitionScalar < 0.6 then
 		debugLog("Weather transition in progress. Adding clouds in a bit.")
+
 		delayTimer = timer.start {
 			type = timer.game,
 			iterations = 1,
@@ -395,7 +441,7 @@ end
 
 function clouds.conditionCheck()
 	local cell = tes3.getPlayerCell()
-	if not cell or cell and not cell.isOrBehavesAsExterior then return end
+	if not cell or not cell.isOrBehavesAsExterior then return end
 
 	toWeather = WtC.nextWeather or WtC.currentWeather
 
@@ -423,13 +469,17 @@ local function startTimer()
 end
 
 -- Register events, timers and reset values --
+
 function clouds.onLoaded()
 	if not tes3.player then return end
+
 	debugLog("Game loaded.")
+
 	if not recolourRegistered then
 		event.register(tes3.event.simulate, reColour)
 		recolourRegistered = true
 	end
+
 	startTimer()
 	clouds.detachAll()
 	clouds.conditionCheck()
@@ -438,9 +488,12 @@ end
 function clouds.cleanup()
 	clouds.detachAll()
 	util.removeTimers({ conditionTimer, appCullTimer, delayTimer })
+
 	if recolourRegistered then
 		event.unregister(tes3.event.simulate, reColour)
+		recolourRegistered = false
 	end
+
 	conditionTimer, delayTimer, appCullTimer = nil, nil, nil
 end
 
