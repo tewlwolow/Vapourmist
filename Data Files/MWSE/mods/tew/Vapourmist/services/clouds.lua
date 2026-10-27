@@ -42,7 +42,7 @@ local EMITTER_PROFILES = {
 		depth = 1500,
 	},
 	middle = {
-		height = 4.0,
+		height = 5.0,
 		depth = 2750,
 	},
 	deep = {
@@ -244,7 +244,7 @@ local function getOutputValues()
 	return {
 		colours = weatherColour,
 		angle = WtC.windVelocityCurrWeather:normalized():copy().y * math.pi * 0.5,
-		speed = math.max(WtC.currentWeather.cloudsSpeed * config.speedCoefficient, MIN_SPEED),
+		speed = math.max(WtC.currentWeather.cloudsSpeed * 5 * config.speedCoefficient, MIN_SPEED),
 	}
 end
 

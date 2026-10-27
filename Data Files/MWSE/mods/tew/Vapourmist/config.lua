@@ -2,7 +2,7 @@ return mwse.loadConfig(
     "Vapourmist",
     {
         modEnabled = true,
-        speedCoefficient = 45,
+        speedCoefficient = 100,
         debugLogOn = false,
         clouds = true,
         mistShader = true,

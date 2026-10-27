@@ -47,9 +47,9 @@ mainPage:createYesNoButton {
 }
 
 mainPage:createSlider {
-    label = "Controls how fast clouds move across the sky.\nDefault - 45.\nSpeed coefficient",
-    min = 0,
-    max = 100,
+    label = "Controls how fast clouds move across the sky.\nDefault - 100.\nSpeed coefficient",
+    min = 15,
+    max = 200,
     step = 1,
     jump = 10,
     variable = registerVariable("speedCoefficient"),
