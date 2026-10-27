@@ -30,19 +30,19 @@ mainPage:createYesNoButton {
     restartRequired = true,
 }
 mainPage:createYesNoButton {
-    label = "Enable clouds?",
+    label = "Enable NIF clouds?",
     variable = registerVariable("clouds"),
 }
 mainPage:createYesNoButton {
-    label = "Enable shader-based mist?",
+    label = "Enable mist shader?",
     variable = registerVariable("mistShader"),
 }
 mainPage:createYesNoButton {
-    label = "Enable NIF-based mist?",
+    label = "Enable NIF mist?",
     variable = registerVariable("mistNIF"),
 }
 mainPage:createYesNoButton {
-    label = "Enable shader-based mist in interiors?",
+    label = "Enable mist & dust shader in interiors?",
     variable = registerVariable("interior"),
 }
 
