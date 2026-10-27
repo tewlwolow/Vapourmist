@@ -30,13 +30,13 @@ float fov;
 // Density:
 // 0   = no particles
 // 20  = maximum particles
-float dustDensity = 4.0;
+float dustDensity = 1.0;
 
 // Particle size multiplier
 float dustSize = 3.0;
 
 // Distance between particle cells
-float dustCellSize = 43.0;
+float dustCellSize = 32.0;
 
 // Animation speed
 float dustTimeScale = 0.12;
@@ -61,7 +61,7 @@ float dustFadeEnd = 80.0;
 // Material threshold
 // Lower = more particles visible
 // Higher = only brighter particles
-float dustMaterialBias = 0.35;
+float dustMaterialBias = 0.4;
 
 // Dust visibility / brightness
 // 0   = invisible
