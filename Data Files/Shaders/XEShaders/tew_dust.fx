@@ -25,9 +25,6 @@ float2 rcpres;
 float3 fognearcol;
 float fov;
 
-
-// ---------------- dust controls ----------------
-
 // ---------------- dust controls ----------------
 
 // Density:
@@ -51,7 +48,7 @@ float dustMotionScale = 6.0;
 // 1 = diamond
 // 2 = sphere
 // 4+ = cube-like
-float dustShape = 1.5;
+float dustShape = 1.9;
 
 // Raymarch limits
 float dustMaxDistance = 1200.0;
@@ -64,13 +61,13 @@ float dustFadeEnd = 80.0;
 // Material threshold
 // Lower = more particles visible
 // Higher = only brighter particles
-float dustMaterialBias = 0.25;
+float dustMaterialBias = 0.2;
 
 // Dust visibility / brightness
 // 0   = invisible
 // 1   = old strength
 // 0.15-0.35 = natural cave dust
-float dustOpacity = 0.18;
+float dustOpacity = 0.16;
 
 // Neutral fallback color used when no fog volume is nearby (avoids dust
 // tinting toward black - see dustTint fallback in the main pass).
@@ -79,19 +76,12 @@ float3 dustBaseColor = float3(0.85, 0.82, 0.75);
 // How much the particle shape exponent (dustShape) varies per-particle.
 // 0 = every particle uses exactly dustShape. Higher = more mix of
 // diamond/sphere/cube-ish silhouettes for a less uniform look.
-float dustShapeVariation = 0.7;
+float dustShapeVariation = 0.4;
 
 // How much particle opacity varies per-particle, as a fraction of
 // dustOpacity. 0 = every particle equally opaque. 1 = some particles
 // can fade almost to nothing while others hit full dustOpacity.
-float dustOpacityVariation = 0.7;
-
-// Anisotropic stretch: gives each particle a slightly irregular,
-// elongated/flattened silhouette per-axis instead of every particle
-// being a perfectly symmetric blob - real dust flecks aren't uniform.
-// 0 = no stretch (perfectly symmetric, old behavior), higher = more
-// pronounced per-particle elongation/flattening.
-float dustStretchAmount = 0.2;
+float dustOpacityVariation = 0.8;
 
 // Static height falloff: dust thins out with height above the floor,
 // scaled against the fog volume's own vertical extent (fogRadius.z)
@@ -253,15 +243,6 @@ float GetDistOnly(float3 p)
         * dustMotionScale;
     q -= sphereOffset;
 
-    // Anisotropic stretch. Keep the distance estimate conservative by
-    // scaling it down by the largest coordinate scale factor.
-    float3 stretch = 1.0 + dustStretchAmount * (float3(
-        frac(r1 * 11.13),
-        frac(r1 * 17.77),
-        frac(r1 * 23.31)
-    ) - 0.5);
-    q *= stretch;
-
     float radius = (0.1 + 0.4 * frac(r1 * 43.123)) * dustSize;
     float densityScale = saturate(dustDensity / 20.0);
     radius *= densityScale;
@@ -278,7 +259,7 @@ float GetDistOnly(float3 p)
     float shapeN = max(1.0, dustShape + shapeJitter);
 
     float dist = sdSuperShape(q, radius, shapeN);
-    return dist / max(max(stretch.x, stretch.y), stretch.z);
+    return dist;
 }
 
 // VISUALS ONLY (Executed ONCE outside the loop)
