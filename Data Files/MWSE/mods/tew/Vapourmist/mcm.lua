@@ -30,30 +30,26 @@ mainPage:createYesNoButton {
     restartRequired = true,
 }
 mainPage:createYesNoButton {
-    label = "Enable clouds?",
+    label = "Enable NIF clouds?",
     variable = registerVariable("clouds"),
 }
 mainPage:createYesNoButton {
-    label = "Enable shader-based mist?",
+    label = "Enable mist shader?",
     variable = registerVariable("mistShader"),
 }
 mainPage:createYesNoButton {
-    label = "Enable NIF-based mist?",
+    label = "Enable NIF mist?",
     variable = registerVariable("mistNIF"),
 }
 mainPage:createYesNoButton {
-    label = "Enable shader-based mist in interiors?",
-    variable = registerVariable("interiorShader"),
-}
-mainPage:createYesNoButton {
-    label = "Enable NIF-based mist in interiors?",
-    variable = registerVariable("interiorNIF"),
+    label = "Enable mist & dust shader in interiors?",
+    variable = registerVariable("interior"),
 }
 
 mainPage:createSlider {
-    label = "Controls how fast clouds move across the sky.\nDefault - 45.\nSpeed coefficient",
-    min = 0,
-    max = 100,
+    label = "Controls how fast clouds move across the sky.\nDefault - 100.\nSpeed coefficient",
+    min = 15,
+    max = 200,
     step = 1,
     jump = 10,
     variable = registerVariable("speedCoefficient"),
